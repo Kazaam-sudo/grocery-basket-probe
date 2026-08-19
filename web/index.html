@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Korzinka — рекомендательный сервис сравнения продуктовой корзины." />
+    <title>Korzinka — сравнение продуктовой корзины</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true">К</span>
+          <span>
+            <strong>Korzinka</strong>
+            <small>сравнение корзины</small>
+          </span>
+        </a>
+        <span class="status-pill"><span class="status-dot"></span>демо-снимок</span>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Рекомендательный web app</p>
+            <h1>Соберите список.<br /><em>Сравните сумму.</em></h1>
+            <p class="hero-text">
+              Korzinka показывает ориентировочную стоимость одной корзины в крупных сетях
+              и помогает выбрать, где покупать выгоднее.
+            </p>
+          </div>
+          <div class="hero-note">
+            <span class="note-icon">i</span>
+            <p>Это рекомендация, а не оформление заказа. Цены в демо-снимке нужно проверить на сайте магазина перед покупкой.</p>
+          </div>
+        </section>
+
+        <section class="basket-panel" aria-labelledby="basket-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Шаг 1</p>
+              <h2 id="basket-title">Ваш список покупок</h2>
+            </div>
+            <span class="basket-count" id="basket-count">0 позиций</span>
+          </div>
+
+          <div class="input-grid">
+            <label class="field-label" for="address-select">
+              Тестовая зона
+              <select id="address-select"></select>
+            </label>
+            <label class="field-label" for="basket-input">
+              Товары — по одному в строке
+              <textarea id="basket-input" rows="8" placeholder="молоко 2,5% 1 л\nбананы 1 кг\nяйца 10 шт"></textarea>
+            </label>
+          </div>
+
+          <div class="example-row">
+            <span>Быстрый пример:</span>
+            <button class="text-button" id="load-example" type="button">загрузить корзину из 8 товаров</button>
+            <span class="muted">до 20 строк</span>
+          </div>
+
+          <div class="action-row">
+            <button class="primary-button" id="compare-button" type="button">Сравнить корзину <span aria-hidden="true">→</span></button>
+            <span class="muted" id="data-status">Загружаю демо-снимок…</span>
+          </div>
+        </section>
+
+        <section class="results-section hidden" id="results-section" aria-labelledby="results-title">
+          <div class="section-heading results-heading">
+            <div>
+              <p class="eyebrow">Шаг 2</p>
+              <h2 id="results-title">Результат сравнения</h2>
+              <p class="section-subtitle" id="results-context"></p>
+            </div>
+            <button class="secondary-button" id="reset-button" type="button">Изменить список</button>
+          </div>
+
+          <div class="recommendation" id="recommendation"></div>
+          <div class="retailer-grid" id="retailer-grid"></div>
+
+          <div class="details-panel">
+            <div class="details-header">
+              <div>
+                <p class="eyebrow">Проверка расчёта</p>
+                <h3>Что вошло в корзину</h3>
+              </div>
+              <div class="details-actions">
+                <button class="secondary-button" id="copy-list-button" type="button">Скопировать список</button>
+                <button class="secondary-button" id="download-button" type="button">Скачать CSV</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Запрос</th>
+                    <th>Упаковка</th>
+                    <th>Пятёрочка</th>
+                    <th>Магнит</th>
+                    <th>Лента</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody id="items-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Korzinka · технический прототип</span>
+        <span>Данные: демонстрационный снимок · <span id="snapshot-time">—</span></span>
+      </footer>
+    </div>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
