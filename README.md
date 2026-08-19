@@ -33,10 +33,28 @@
 - [Backlog Sprint 2: рекомендательная корзина](docs/sprint-02-recommendation-mvp.md)
 - [Отчёт технической разведки Перекрёстка](docs/source-investigation/perekrestok.md)
 - [Отчёт технической разведки Магнита](docs/source-investigation/magnit.md)
+- [Бесплатный web app и GitHub Pages](docs/free-hosting.md)
 - [Готовый промт для следующего coding agent](docs/prompts/01-source-investigation.md)
 - [Prompt 02: recommendation MVP](docs/prompts/02-recommendation-mvp.md)
 
+## Web app
+
+Статический прототип находится в `web/`. Он работает без backend-запросов: читает
+демо-снимок `web/data/demo-quotes.json`, сравнивает корзину в браузере, формирует
+список для выбранной сети и экспортирует CSV. GitHub Actions публикует каталог
+`web/` в GitHub Pages после изменения `main`.
+
+Локальный просмотр без сборки:
+
+```bash
+python3 -m http.server 8080 --directory web
+```
+
+Затем открыть `http://localhost:8080`. Для Pages нужно один раз выбрать
+`Settings → Pages → Source: GitHub Actions`.
+
 ## Статус
 
-Каркас и product decision созданы. Интеграция с внешними источниками начнётся
-только после отдельной source investigation и прохождения Go/Pivot/Stop gate.
+Каркас и product decision созданы. Статический web app готовится к публикации как
+демо. Интеграция с внешними источниками начнётся только после отдельной source
+investigation и прохождения Go/Pivot/Stop gate.
