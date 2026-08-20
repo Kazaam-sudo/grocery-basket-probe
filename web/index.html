@@ -3,76 +3,111 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Korzinka — рекомендательный сервис сравнения продуктовой корзины." />
-    <title>Korzinka — сравнение продуктовой корзины</title>
+    <meta name="description" content="Korzinka — спокойный способ собрать список продуктов и сравнить всю корзину." />
+    <title>Korzinka — собрать и сравнить корзину</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="page-shell">
       <header class="topbar">
-        <a class="brand" href="./">
+        <a class="brand" href="./" aria-label="Korzinka — на главную">
           <span class="brand-mark" aria-hidden="true">К</span>
-          <span>
-            <strong>Korzinka</strong>
-            <small>сравнение корзины</small>
-          </span>
+          <span class="brand-name">Korzinka</span>
         </a>
-        <span class="status-pill"><span class="status-dot"></span>демо-снимок</span>
+        <div class="topbar-meta">
+          <span class="status-label"><span class="status-dot"></span>демо-снимок</span>
+          <span class="topbar-divider" aria-hidden="true"></span>
+          <span class="topbar-note">рекомендация, не заказ</span>
+        </div>
       </header>
 
       <main>
-        <section class="hero">
-          <div class="hero-copy">
-            <p class="eyebrow">Рекомендательный web app</p>
-            <h1>Соберите список.<br /><em>Сравните сумму.</em></h1>
-            <p class="hero-text">
-              Korzinka показывает ориентировочную стоимость одной корзины в крупных сетях
-              и помогает выбрать, где покупать выгоднее.
-            </p>
+        <section class="intro" aria-labelledby="page-title">
+          <div>
+            <p class="eyebrow">Список → сравнение → решение</p>
+            <h1 id="page-title">Соберите корзину так,<br /><span>как удобно вам.</span></h1>
+            <p class="intro-text">Добавьте продукты — Korzinka покажет ориентир по всей корзине и подскажет, где её выгоднее собрать.</p>
           </div>
-          <div class="hero-note">
-            <span class="note-icon">i</span>
-            <p>Это рекомендация, а не оформление заказа. Цены в демо-снимке нужно проверить на сайте магазина перед покупкой.</p>
+          <div class="intro-aside">
+            <span class="aside-number">01</span>
+            <p>Сначала список.<br />Потом магазин.</p>
           </div>
         </section>
 
-        <section class="basket-panel" aria-labelledby="basket-title">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Шаг 1</p>
-              <h2 id="basket-title">Ваш список покупок</h2>
+        <section class="workspace" aria-label="Сборка продуктовой корзины">
+          <div class="builder-panel panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Ваша корзина</p>
+                <h2>Что нужно купить?</h2>
+              </div>
+              <span class="basket-count" id="basket-count">0 позиций</span>
             </div>
-            <span class="basket-count" id="basket-count">0 позиций</span>
-          </div>
 
-          <div class="input-grid">
-            <label class="field-label" for="address-select">
-              Тестовая зона
+            <label class="field-label location-field" for="address-select">
+              Сравнить для зоны
               <select id="address-select"></select>
             </label>
-            <label class="field-label" for="basket-input">
-              Товары — по одному в строке
-              <textarea id="basket-input" rows="8" placeholder="молоко 2,5% 1 л\nбананы 1 кг\nяйца 10 шт"></textarea>
-            </label>
+
+            <div class="quick-add" role="group" aria-label="Добавить товар">
+              <input id="quick-add-input" type="text" autocomplete="off" placeholder="Например, молоко 2,5%" />
+              <button class="add-button" id="add-item-button" type="button">Добавить</button>
+            </div>
+            <p class="input-hint">Можно добавить несколько товаров сразу — вставьте список по одному в строке.</p>
+
+            <label class="sr-only" for="basket-input">Список продуктов по одному в строке</label>
+            <textarea id="basket-input" rows="4" placeholder="молоко 2,5% 1 л\nбананы 1 кг\nяйца 10 шт"></textarea>
+
+            <div class="quick-picks" aria-label="Популярные товары">
+              <span class="quick-picks-label">Быстро добавить</span>
+              <button type="button" class="quick-pick" data-item="молоко">молоко</button>
+              <button type="button" class="quick-pick" data-item="яйца">яйца</button>
+              <button type="button" class="quick-pick" data-item="бананы">бананы</button>
+              <button type="button" class="quick-pick" data-item="хлеб">хлеб</button>
+              <button type="button" class="quick-pick" data-item="кофе">кофе</button>
+              <button type="button" class="quick-pick" data-item="вода">вода</button>
+            </div>
+
+            <div class="list-heading">
+              <h3>В списке</h3>
+              <button class="text-button" id="load-example" type="button">Загрузить пример</button>
+            </div>
+            <div class="basket-items" id="basket-items" aria-live="polite"></div>
+
+            <div class="builder-footer">
+              <span class="muted" id="data-status">Загружаю демо-снимок…</span>
+              <button class="primary-button" id="compare-button" type="button">Сравнить корзину <span aria-hidden="true">→</span></button>
+            </div>
           </div>
 
-          <div class="example-row">
-            <span>Быстрый пример:</span>
-            <button class="text-button" id="load-example" type="button">загрузить корзину из 8 товаров</button>
-            <span class="muted">до 20 строк</span>
-          </div>
-
-          <div class="action-row">
-            <button class="primary-button" id="compare-button" type="button">Сравнить корзину <span aria-hidden="true">→</span></button>
-            <span class="muted" id="data-status">Загружаю демо-снимок…</span>
-          </div>
+          <aside class="summary-card panel" aria-labelledby="summary-title">
+            <div class="summary-topline">
+              <p class="eyebrow">Итог</p>
+              <span class="summary-location" id="summary-location">—</span>
+            </div>
+            <div class="summary-title-row">
+              <h2 id="summary-title">Ваша корзина</h2>
+              <span class="summary-icon" aria-hidden="true">↗</span>
+            </div>
+            <div class="summary-stats">
+              <div><strong id="summary-item-count">0</strong><span>позиций</span></div>
+              <div><strong id="summary-unit-count">0</strong><span>товаров</span></div>
+            </div>
+            <div class="summary-items" id="summary-items">
+              <p class="summary-empty">Добавьте первый товар — он появится здесь.</p>
+            </div>
+            <div class="summary-bottom">
+              <span>Сумма появится после сравнения</span>
+              <span class="summary-arrow" aria-hidden="true">↓</span>
+            </div>
+          </aside>
         </section>
 
         <section class="results-section hidden" id="results-section" aria-labelledby="results-title">
-          <div class="section-heading results-heading">
+          <div class="results-heading">
             <div>
-              <p class="eyebrow">Шаг 2</p>
-              <h2 id="results-title">Результат сравнения</h2>
+              <p class="eyebrow">Сравнение готово</p>
+              <h2 id="results-title">Где собрать корзину</h2>
               <p class="section-subtitle" id="results-context"></p>
             </div>
             <button class="secondary-button" id="reset-button" type="button">Изменить список</button>
@@ -81,22 +116,20 @@
           <div class="recommendation" id="recommendation"></div>
           <div class="retailer-grid" id="retailer-grid"></div>
 
-          <div class="details-panel">
+          <div class="details-panel panel">
             <div class="details-header">
               <div>
                 <p class="eyebrow">Проверка расчёта</p>
-                <h3>Что вошло в корзину</h3>
+                <h3>Позиции по магазинам</h3>
               </div>
-              <div class="details-actions">
-                <button class="secondary-button" id="copy-list-button" type="button">Скопировать список</button>
-                <button class="secondary-button" id="download-button" type="button">Скачать CSV</button>
-              </div>
+              <button class="secondary-button" id="copy-list-button" type="button">Скопировать список</button>
             </div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Запрос</th>
+                    <th>Товар</th>
+                    <th>Кол-во</th>
                     <th>Упаковка</th>
                     <th>Пятёрочка</th>
                     <th>Магнит</th>
@@ -113,10 +146,11 @@
 
       <footer class="footer">
         <span>Korzinka · технический прототип</span>
-        <span>Данные: демонстрационный снимок · <span id="snapshot-time">—</span></span>
+        <span>Демо-снимок: <span id="snapshot-time">—</span></span>
       </footer>
     </div>
 
     <script src="./app.js" defer></script>
   </body>
 </html>
+
