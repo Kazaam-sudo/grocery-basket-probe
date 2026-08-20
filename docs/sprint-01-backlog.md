@@ -16,7 +16,7 @@
 | 6 | Инфраструктура БД | SQLAlchemy/Alembic, таблицы из модели, migrations и integration tests | Не хранить полный адрес/авторизационные данные | 3, 5 |
 | 7 | Read-only Perekrestok connector | Маленький адаптер для одобренного пути с limiter, cache, safe errors | Не сканировать весь каталог и не обходить блокировки | 5–6 |
 | 8 | Runner и persistence | 100 SKU, три address contexts, observations/errors/run audit | Не делать бесконечные ретраи | 6–7 |
-| 9 | Acceptance export | 20 SKU, CSV/JSON, повторный запуск создаёт новые observations; частичная ошибка изолирована | Не делать клиентский UI | 8 |
+| 9 | Acceptance report | 20 SKU, внутренний JSON-отчёт, повторный запуск создаёт новые observations; частичная ошибка изолирована | Не делать клиентский UI и не добавлять скачивание в web app | 8 |
 
 ## План по дням
 
@@ -40,3 +40,4 @@ docker compose up -d postgres
 ```
 
 Live-проверки источника не входят в CI и не должны запускаться тестами.
+
