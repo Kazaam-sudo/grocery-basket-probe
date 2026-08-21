@@ -34,16 +34,18 @@
 - [Отчёт технической разведки Перекрёстка](docs/source-investigation/perekrestok.md)
 - [Отчёт технической разведки Магнита](docs/source-investigation/magnit.md)
 - [Бесплатный web app и GitHub Pages](docs/free-hosting.md)
+- [Live data gate и статус источников](docs/live-data-gate.md)
 - [Готовый промт для следующего coding agent](docs/prompts/01-source-investigation.md)
 - [Prompt 02: recommendation MVP](docs/prompts/02-recommendation-mvp.md)
 
 ## Web app
 
-Статический прототип находится в `web/`. Он работает без backend-запросов: читает
-демо-снимок `web/data/demo-quotes.json`, сравнивает корзину в браузере, формирует
-список для выбранной сети. Пользовательский интерфейс не требует скачивания файлов:
-результат можно посмотреть на странице и скопировать одним нажатием. GitHub Actions
-публикует каталог `web/` в GitHub Pages после изменения `main`.
+Статический прототип находится в `web/`. Пока live data gate не пройден, он работает
+без backend-запросов: читает явно помеченный демо-снимок
+`web/data/demo-quotes.json`, сравнивает корзину в браузере, формирует список для
+выбранной сети. Пользовательский интерфейс не требует скачивания файлов: результат
+можно посмотреть на странице и скопировать одним нажатием. GitHub Actions публикует
+каталог `web/` в GitHub Pages после изменения `main`.
 
 Локальный просмотр без сборки:
 
@@ -56,7 +58,7 @@ python3 -m http.server 8080 --directory web
 
 ## Статус
 
-Каркас и product decision созданы. Статический web app готовится к публикации как
-демо. Интеграция с внешними источниками начнётся только после отдельной source
-investigation и прохождения Go/Pivot/Stop gate.
-
+Каркас и product decision созданы. Статический web app опубликован как демо.
+Интеграция с внешними источниками начнётся только после отдельной source
+investigation и прохождения Go/Pivot/Stop gate; текущий статус зафиксирован в
+`docs/live-data-gate.md`.
