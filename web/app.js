@@ -16,6 +16,11 @@ function normalize(value) {
   return value.toLowerCase().replaceAll("ё", "е").replace(/[^а-яa-z0-9]+/g, " ").trim();
 }
 
+function extractPack(value) {
+  const match = String(value || "").match(/\d+(?:[.,]\d+)?\s*(?:кг|г|л|мл|шт|рулон(?:а|ов)?)/i);
+  return match ? match[0] : "";
+}
+
 function formatMoney(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(value);
@@ -43,7 +48,7 @@ function syncBasketFromTextarea() {
   parseLines().forEach((query) => {
     const key = normalize(query);
     if (!key || next.some((item) => normalize(item.query) === key)) return;
-    next.push(previous.get(key) || { id: `${Date.now()}-${Math.random()}`, query, quantity: 1 });
+    next.push(previous.get(key) || { id: `${Date.now()}-${Math.random()}`, query, brand: "", pack: extractPack(query), quantity: 1 });
   });
   state.basketItems = next;
   renderBasket();
@@ -61,6 +66,11 @@ function updateCount() {
   $("#summary-unit-count").textContent = unitCount;
 }
 
+function formatItemSpec(item) {
+  const details = [item.brand, item.pack].filter(Boolean);
+  return details.length ? details.join(" · ") : "бренд и упаковка не указаны";
+}
+
 function renderBasket() {
   updateCount();
   const container = $("#basket-items");
@@ -68,8 +78,8 @@ function renderBasket() {
     container.innerHTML = '<p class="basket-empty">Список пока пуст. Добавьте товар выше.</p>';
   } else {
     container.innerHTML = state.basketItems.map((item) => `<div class="basket-item" data-id="${item.id}">
-      <div class="basket-item-name">${escapeHtml(item.query)}<span class="basket-item-sub">количество можно изменить</span></div>
-      <div class="quantity-control" aria-label="Количество: ${item.query}">
+      <div class="basket-item-name">${escapeHtml(item.query)}<span class="basket-item-sub">${escapeHtml(formatItemSpec(item))}</span><span class="basket-item-sub">количество можно изменить</span></div>
+      <div class="quantity-control" aria-label="Количество: ${escapeHtml(item.query)}">
         <button type="button" data-action="decrease" aria-label="Уменьшить количество">−</button>
         <span>${item.quantity}</span>
         <button type="button" data-action="increase" aria-label="Увеличить количество">+</button>
@@ -83,18 +93,45 @@ function renderBasket() {
     summary.innerHTML = '<p class="summary-empty">Добавьте первый товар — он появится здесь.</p>';
   } else {
     const preview = state.basketItems.slice(0, 5);
-    summary.innerHTML = preview.map((item) => `<div class="summary-line"><span>${escapeHtml(item.query)}</span><span>×${item.quantity}</span></div>`).join("") + (state.basketItems.length > preview.length ? `<p class="summary-more">ещё ${state.basketItems.length - preview.length}</p>` : "");
+    summary.innerHTML = preview.map((item) => `<div class="summary-line"><span>${escapeHtml(item.query)}<small class="summary-line-spec">${escapeHtml(formatItemSpec(item))}</small></span><span>×${item.quantity}</span></div>`).join("") + (state.basketItems.length > preview.length ? `<p class="summary-more">ещё ${state.basketItems.length - preview.length}</p>` : "");
   }
 }
 
-function findOffer(retailer, line) {
-  const query = normalize(line);
-  return retailer.items.find((item) => item.aliases.some((alias) => query.includes(normalize(alias)) || normalize(alias).includes(query)));
+function matchesTextConstraint(expected, actual) {
+  const expectedValue = normalize(expected || "");
+  const actualValue = normalize(actual || "");
+  if (!expectedValue) return true;
+  return Boolean(actualValue) && (actualValue === expectedValue || actualValue.includes(expectedValue));
+}
+
+function packSignature(value) {
+  const raw = String(value || "").toLowerCase().replaceAll("ё", "е").replace(",", ".").trim();
+  const match = raw.match(/(\d+(?:\.\d+)?)\s*(кг|г|л|мл|шт|рулон(?:а|ов)?)/);
+  if (!match) return normalize(raw);
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const conversions = { кг: ["g", 1000], г: ["g", 1], л: ["ml", 1000], мл: ["ml", 1], шт: ["count", 1], рулон: ["count", 1], рулона: ["count", 1], рулонов: ["count", 1] };
+  const [canonicalUnit, multiplier] = conversions[unit];
+  return `${Math.round(amount * multiplier * 1000) / 1000}:${canonicalUnit}`;
+}
+
+function matchesPackConstraint(expected, actual) {
+  const expectedValue = String(expected || "").trim();
+  if (!expectedValue) return true;
+  const expectedSignature = packSignature(expectedValue);
+  const actualSignature = packSignature(actual);
+  return expectedSignature === actualSignature;
+}
+
+function findOffer(retailer, item) {
+  const query = normalize(item.query);
+  const candidates = retailer.items.filter((offer) => offer.aliases.some((alias) => query.includes(normalize(alias)) || normalize(alias).includes(query)));
+  return candidates.find((offer) => matchesTextConstraint(item.brand, offer.brand) && matchesPackConstraint(item.pack, offer.pack)) || null;
 }
 
 function buildQuote(items) {
   return state.snapshot.retailers.map((retailer) => {
-    const matchedItems = items.map((item) => ({ ...item, offer: findOffer(retailer, item.query) }));
+    const matchedItems = items.map((item) => ({ ...item, offer: findOffer(retailer, item) }));
     const found = matchedItems.filter(({ offer }) => offer?.available !== false && offer?.price != null);
     return {
       ...retailer,
@@ -135,7 +172,9 @@ function renderItemsTable() {
     const primaryOffer = offers.find(Boolean);
     const availableOffers = offers.filter((offer) => offer?.available !== false && offer?.price != null);
     const status = availableOffers.length === offers.length ? ["все сети", ""] : availableOffers.length ? ["частично", "warning"] : ["не найдено", "danger"];
-    return `<tr><td><strong>${escapeHtml(item.query)}</strong></td><td>${item.quantity}</td><td>${escapeHtml(primaryOffer?.pack || "—")}</td>${offers.map((offer) => `<td class="price-cell ${offer?.available === false || offer?.price == null ? "unavailable" : ""}">${offer?.available === false ? "нет" : offer?.price != null ? formatMoney(offer.price * item.quantity) : "—"}</td>`).join("")}<td><span class="item-status ${status[1]}">${status[0]}</span></td></tr>`;
+    const brand = item.brand || primaryOffer?.brand || "—";
+    const pack = item.pack || primaryOffer?.pack || "—";
+    return `<tr><td><strong>${escapeHtml(item.query)}</strong></td><td>${escapeHtml(brand)}</td><td>${item.quantity}</td><td>${escapeHtml(pack)}</td>${offers.map((offer) => `<td class="price-cell ${offer?.available === false || offer?.price == null ? "unavailable" : ""}">${offer?.available === false ? "нет" : offer?.price != null ? formatMoney(offer.price * item.quantity) : "—"}</td>`).join("")}<td><span class="item-status ${status[1]}">${status[0]}</span></td></tr>`;
   });
   $("#items-table-body").innerHTML = rows.join("");
 }
@@ -161,7 +200,7 @@ function renderResults() {
 }
 
 function listText(retailer) {
-  return retailer.items.filter(({ offer }) => offer?.available !== false && offer?.price != null).map(({ query, offer, quantity }) => `${quantity > 1 ? `${quantity} × ` : ""}${query} — ${offer.name}, ${offer.pack}`).join("\n");
+  return retailer.items.filter(({ offer }) => offer?.available !== false && offer?.price != null).map(({ query, offer, quantity }) => `${quantity > 1 ? `${quantity} × ` : ""}${query} — ${formatItemSpec({ brand: offer.brand, pack: offer.pack })}, ${offer.name}`).join("\n");
 }
 
 function copyRetailerList(retailerId) {
@@ -171,19 +210,31 @@ function copyRetailerList(retailerId) {
   $("#data-status").textContent = `Список для ${retailer.name} скопирован`;
 }
 
-function addItems(raw) {
-  const additions = raw.split(/\n|,/).map((line) => line.trim()).filter(Boolean);
+function addItems(raw, details = {}) {
+  const additions = raw.split(/\n/).map((line) => line.trim()).filter(Boolean);
   if (!additions.length) return;
-  const existing = new Set(state.basketItems.map((item) => normalize(item.query)));
+  const existing = new Map(state.basketItems.map((item) => [normalize(item.query), item]));
+  const singleItem = additions.length === 1;
   additions.forEach((query) => {
     const key = normalize(query);
-    if (!key || existing.has(key) || state.basketItems.length >= 20) return;
-    state.basketItems.push({ id: `${Date.now()}-${Math.random()}`, query, quantity: 1 });
-    existing.add(key);
+    if (!key || state.basketItems.length >= 20) return;
+    const previous = existing.get(key);
+    if (previous) {
+      if (singleItem) {
+        previous.brand = details.brand || previous.brand || "";
+        previous.pack = details.pack || previous.pack || "";
+      }
+      return;
+    }
+    const item = { id: `${Date.now()}-${Math.random()}`, query, brand: singleItem ? details.brand || "" : "", pack: singleItem ? details.pack || extractPack(query) : extractPack(query), quantity: 1 };
+    state.basketItems.push(item);
+    existing.set(key, item);
   });
   setTextareaFromItems();
   renderBasket();
   $("#quick-add-input").value = "";
+  $("#brand-input").value = "";
+  $("#pack-input").value = "";
 }
 
 function changeQuantity(id, delta) {
@@ -217,8 +268,8 @@ async function init() {
       state.selectedAddress = event.target.value;
       $("#summary-location").textContent = state.snapshot.addresses.find((address) => address.id === state.selectedAddress).label;
     });
-    $("#quick-add-input").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); addItems(event.target.value); } });
-    $("#add-item-button").addEventListener("click", () => addItems($("#quick-add-input").value));
+    $("#quick-add-input").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); addItems(event.target.value, { brand: $("#brand-input").value.trim(), pack: $("#pack-input").value.trim() }); } });
+    $("#add-item-button").addEventListener("click", () => addItems($("#quick-add-input").value, { brand: $("#brand-input").value.trim(), pack: $("#pack-input").value.trim() }));
     $(".quick-picks").addEventListener("click", (event) => { if (event.target.matches("[data-item]")) addItems(event.target.dataset.item); });
     $("#basket-items").addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
