@@ -1,0 +1,166 @@
+{
+  "schema_version": "catalog-1",
+  "generated_at": "2026-08-21",
+  "source_policy": "real_product_metadata_only",
+  "note": "Карточки товаров взяты из публичных каталогов производителей или публичных карточек товаров. Цены и наличие не входят в этот файл.",
+  "items": [
+    {
+      "id": "prostokvashino-milk-25-930",
+      "name": "Молоко Простоквашино 2,5%, 930 мл",
+      "brand": "Простоквашино",
+      "pack": "930 мл",
+      "gtin": "4607053473544",
+      "aliases": [
+        "молоко",
+        "простоквашино",
+        "молоко 2 5"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://prostokvashino.ru/product/moloko-pasterizovannoe-2-5-930-ml/"
+    },
+    {
+      "id": "agusha-yogurt-apple-pear-180",
+      "name": "Йогурт питьевой Агуша, яблоко-груша, 180 г",
+      "brand": "Агуша",
+      "pack": "180 г",
+      "aliases": [
+        "йогурт",
+        "агуша",
+        "йогурт питьевой"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://agulife.ru/"
+    },
+    {
+      "id": "agusha-biolact-sweet-90",
+      "name": "Биолакт сладкий Агуша, 90 г",
+      "brand": "Агуша",
+      "pack": "90 г",
+      "aliases": [
+        "биолакт",
+        "йогурт",
+        "агуша"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://agulife.ru/"
+    },
+    {
+      "id": "prostokvashino-kefir-25-930",
+      "name": "Кефир Простоквашино 2,5%, 930 г",
+      "brand": "Простоквашино",
+      "pack": "930 г",
+      "aliases": [
+        "кефир",
+        "простоквашино"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://prostokvashino.ru/products/kefir/"
+    },
+    {
+      "id": "makfa-spaghetti-500",
+      "name": "Спагетти Makfa, 500 г",
+      "brand": "Makfa",
+      "pack": "500 г",
+      "aliases": [
+        "макароны",
+        "паста",
+        "спагетти",
+        "makfa"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://www.makfa.ru/catalog/makaronnaya-produktsiya/klassicheskie-makaronnye-izdeliya/"
+    },
+    {
+      "id": "ecomilk-butter-825-180",
+      "name": "Масло сливочное Экомилк 82,5%, 180 г",
+      "brand": "Экомилк",
+      "pack": "180 г",
+      "aliases": [
+        "масло",
+        "масло сливочное",
+        "экомилк"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://ecomilk.ru/catalog/ecomilk/butter/maslo_sliva/"
+    },
+    {
+      "id": "jardin-dessert-cup-ground-250",
+      "name": "Кофе молотый Jardin Dessert Cup, 250 г",
+      "brand": "Jardin",
+      "pack": "250 г",
+      "aliases": [
+        "кофе",
+        "кофе молотый",
+        "jardin",
+        "dessert cup"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://jardincoffee.ru/coffee/dessert_cup/"
+    },
+    {
+      "id": "mistral-kuban-rice-900",
+      "name": "Рис Мистраль «Кубань», 900 г",
+      "brand": "Мистраль",
+      "pack": "900 г",
+      "aliases": [
+        "рис",
+        "мистраль",
+        "рис 900"
+      ],
+      "source": "public_product_page",
+      "source_url": "https://m.integration.vs.market.yandex.net/card/ris-mistral-kuban-900-g/5715033340"
+    },
+    {
+      "id": "zewa-deluxe-8",
+      "name": "Туалетная бумага Zewa Deluxe, 8 рулонов",
+      "brand": "Zewa",
+      "pack": "8 рулонов",
+      "aliases": [
+        "туалетная бумага",
+        "бумага",
+        "zewa"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://zewa-russia.ru/products_category/tualetnaya_bumaga/bolshie-upakovki-tualetnaya-bumaga/"
+    },
+    {
+      "id": "roskar-eggs-c1-10",
+      "name": "Яйцо куриное Роскар С1, 10 шт",
+      "brand": "Роскар",
+      "pack": "10 шт",
+      "aliases": [
+        "яйца",
+        "яйцо",
+        "роскар"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://www.roskar.ru/nasha-produkciya"
+    },
+    {
+      "id": "svyatoi-istochnik-water-15",
+      "name": "Вода негазированная Святой Источник, 1,5 л",
+      "brand": "Святой Источник",
+      "pack": "1,5 л",
+      "aliases": [
+        "вода",
+        "вода 1 5",
+        "святой источник"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://svyatoyistochnik.com/products/"
+    },
+    {
+      "id": "dobry-apple-juice-1l",
+      "name": "Сок яблочный Добрый, 1 л",
+      "brand": "Добрый",
+      "pack": "1 л",
+      "aliases": [
+        "сок",
+        "сок яблочный",
+        "добрый"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://dobry.ru/catalog/juice/apple/"
+    }
+  ]
+}
