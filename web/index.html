@@ -49,17 +49,17 @@
               <select id="address-select"></select>
             </label>
 
-            <div class="quick-add" role="group" aria-label="Добавить товар">
-              <input id="quick-add-input" type="text" autocomplete="off" placeholder="Например, молоко" />
-              <button class="add-button" id="add-item-button" type="button">Добавить</button>
+            <div class="product-search" role="group" aria-label="Выбрать товар из каталога">
+              <div class="quick-add">
+                <input id="quick-add-input" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="product-suggestions" aria-expanded="false" placeholder="Начните вводить: молоко, кофе, йогурт…" />
+                <button class="add-button" id="add-item-button" type="button" disabled>Добавить</button>
+              </div>
+              <div class="product-suggestions hidden" id="product-suggestions" role="listbox"></div>
+              <div class="selected-product" id="selected-product" aria-live="polite">
+                <span>Выберите точный товар из подсказок — бренд и упаковка подставятся автоматически.</span>
+              </div>
             </div>
-            <div class="basket-details" role="group" aria-label="Уточнить товар">
-              <label class="sr-only" for="brand-input">Бренд</label>
-              <input id="brand-input" type="text" autocomplete="off" placeholder="Бренд, например Простоквашино" />
-              <label class="sr-only" for="pack-input">Упаковка</label>
-              <input id="pack-input" type="text" autocomplete="off" placeholder="Упаковка, например 930 мл" />
-            </div>
-            <p class="input-hint">Укажите бренд и упаковку, чтобы сравнивать одинаковые позиции. Список по строкам можно вставить ниже.</p>
+            <p class="input-hint">Выбирайте конкретную карточку товара: так мы не сравним разные упаковки или бренды. Список по строкам ниже можно вставить для чернового набора.</p>
 
             <label class="sr-only" for="basket-input">Список продуктов по одному в строке</label>
             <textarea id="basket-input" rows="4" placeholder="молоко 2,5% 1 л\nбананы 1 кг\nяйца 10 шт"></textarea>
@@ -153,7 +153,7 @@
 
       <footer class="footer">
         <span>Korzinka · технический прототип</span>
-        <span>Демо-снимок: <span id="snapshot-time">—</span></span>
+        <span>Каталог товаров: реальные карточки · цены: демо-снимок · <span id="snapshot-time">—</span></span>
       </footer>
     </div>
 
