@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 import httpx
 import pytest
 
@@ -44,4 +42,3 @@ async def test_probe_marks_challenge_page_blocked() -> None:
         result = await probe.probe("retailer", "https://retailer.test/catalog")
 
     assert result.status is ProbeStatus.BLOCKED
-

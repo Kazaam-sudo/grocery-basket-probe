@@ -119,7 +119,10 @@ class PublicSourceProbe:
 
         response_path = response.url.path.lower()
         body_prefix = response.text[:4096].lower()
-        if any(marker in response_path or marker in body_prefix for marker in self._challenge_markers):
+        if any(
+            marker in response_path or marker in body_prefix
+            for marker in self._challenge_markers
+        ):
             return ProbeStatus.BLOCKED
         return ProbeStatus.AVAILABLE
 
@@ -136,4 +139,3 @@ class PublicSourceProbe:
         if status is ProbeStatus.UNAVAILABLE:
             return "source returned a transient/server error; no retry was attempted"
         return f"source returned HTTP {response.status_code}"
-
