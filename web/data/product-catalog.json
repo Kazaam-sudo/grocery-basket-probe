@@ -1,8 +1,8 @@
 {
   "schema_version": "catalog-1",
-  "generated_at": "2026-08-21",
+  "generated_at": "2026-08-23",
   "source_policy": "real_product_metadata_only",
-  "note": "Карточки товаров взяты из публичных каталогов производителей или публичных карточек товаров. Цены и наличие не входят в этот файл.",
+  "note": "Карточки товаров взяты из публичных каталогов производителей или публичных карточек товаров. На первом шаге выбирается категория, затем бренд и фасовка. Цены и наличие не входят в этот файл.",
   "items": [
     {
       "id": "prostokvashino-milk-25-930",
@@ -16,7 +16,13 @@
         "молоко 2 5"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://prostokvashino.ru/product/moloko-pasterizovannoe-2-5-930-ml/"
+      "source_url": "https://prostokvashino.ru/product/moloko-pasterizovannoe-2-5-930-ml/",
+      "category_id": "milk",
+      "category_label": "Молоко",
+      "category_aliases": [
+        "молоко",
+        "молочка"
+      ]
     },
     {
       "id": "agusha-yogurt-apple-pear-180",
@@ -29,7 +35,13 @@
         "йогурт питьевой"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://agulife.ru/"
+      "source_url": "https://agulife.ru/",
+      "category_id": "yogurt",
+      "category_label": "Йогурт",
+      "category_aliases": [
+        "йогурт",
+        "йогурты"
+      ]
     },
     {
       "id": "agusha-biolact-sweet-90",
@@ -42,7 +54,13 @@
         "агуша"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://agulife.ru/"
+      "source_url": "https://agulife.ru/",
+      "category_id": "yogurt",
+      "category_label": "Йогурт",
+      "category_aliases": [
+        "йогурт",
+        "йогурты"
+      ]
     },
     {
       "id": "prostokvashino-kefir-25-930",
@@ -54,7 +72,12 @@
         "простоквашино"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://prostokvashino.ru/products/kefir/"
+      "source_url": "https://prostokvashino.ru/products/kefir/",
+      "category_id": "kefir",
+      "category_label": "Кефир",
+      "category_aliases": [
+        "кефир"
+      ]
     },
     {
       "id": "makfa-spaghetti-500",
@@ -68,7 +91,14 @@
         "makfa"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://www.makfa.ru/catalog/makaronnaya-produktsiya/klassicheskie-makaronnye-izdeliya/"
+      "source_url": "https://www.makfa.ru/catalog/makaronnaya-produktsiya/klassicheskie-makaronnye-izdeliya/",
+      "category_id": "pasta",
+      "category_label": "Макароны",
+      "category_aliases": [
+        "макароны",
+        "паста",
+        "спагетти"
+      ]
     },
     {
       "id": "ecomilk-butter-825-180",
@@ -81,7 +111,13 @@
         "экомилк"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://ecomilk.ru/catalog/ecomilk/butter/maslo_sliva/"
+      "source_url": "https://ecomilk.ru/catalog/ecomilk/butter/maslo_sliva/",
+      "category_id": "butter",
+      "category_label": "Масло сливочное",
+      "category_aliases": [
+        "масло",
+        "сливочное масло"
+      ]
     },
     {
       "id": "jardin-dessert-cup-ground-250",
@@ -95,7 +131,13 @@
         "dessert cup"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://jardincoffee.ru/coffee/dessert_cup/"
+      "source_url": "https://jardincoffee.ru/coffee/dessert_cup/",
+      "category_id": "coffee",
+      "category_label": "Кофе",
+      "category_aliases": [
+        "кофе",
+        "кофе молотый"
+      ]
     },
     {
       "id": "mistral-kuban-rice-900",
@@ -108,7 +150,13 @@
         "рис 900"
       ],
       "source": "public_product_page",
-      "source_url": "https://m.integration.vs.market.yandex.net/card/ris-mistral-kuban-900-g/5715033340"
+      "source_url": "https://m.integration.vs.market.yandex.net/card/ris-mistral-kuban-900-g/5715033340",
+      "category_id": "rice",
+      "category_label": "Рис",
+      "category_aliases": [
+        "рис",
+        "крупа"
+      ]
     },
     {
       "id": "zewa-deluxe-8",
@@ -121,7 +169,13 @@
         "zewa"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://zewa-russia.ru/products_category/tualetnaya_bumaga/bolshie-upakovki-tualetnaya-bumaga/"
+      "source_url": "https://zewa-russia.ru/products_category/tualetnaya_bumaga/bolshie-upakovki-tualetnaya-bumaga/",
+      "category_id": "toilet-paper",
+      "category_label": "Туалетная бумага",
+      "category_aliases": [
+        "туалетная бумага",
+        "бумага"
+      ]
     },
     {
       "id": "roskar-eggs-c1-10",
@@ -134,7 +188,13 @@
         "роскар"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://www.roskar.ru/nasha-produkciya"
+      "source_url": "https://www.roskar.ru/nasha-produkciya",
+      "category_id": "eggs",
+      "category_label": "Яйца",
+      "category_aliases": [
+        "яйца",
+        "яйцо"
+      ]
     },
     {
       "id": "svyatoi-istochnik-water-15",
@@ -147,7 +207,13 @@
         "святой источник"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://svyatoyistochnik.com/products/"
+      "source_url": "https://svyatoyistochnik.com/products/",
+      "category_id": "water",
+      "category_label": "Вода",
+      "category_aliases": [
+        "вода",
+        "питьевая вода"
+      ]
     },
     {
       "id": "dobry-apple-juice-1l",
@@ -160,7 +226,124 @@
         "добрый"
       ],
       "source": "manufacturer_catalog",
-      "source_url": "https://dobry.ru/catalog/juice/apple/"
+      "source_url": "https://dobry.ru/catalog/juice/apple/",
+      "category_id": "juice",
+      "category_label": "Сок",
+      "category_aliases": [
+        "сок",
+        "сок яблочный"
+      ]
+    },
+    {
+      "id": "prostokvashino-milk-15-930",
+      "name": "Молоко Простоквашино 1,5%, 930 мл",
+      "brand": "Простоквашино",
+      "pack": "930 мл",
+      "aliases": [
+        "молоко",
+        "простоквашино"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://prostokvashino.ru/products/pasterizovannoe/",
+      "category_id": "milk",
+      "category_label": "Молоко",
+      "category_aliases": [
+        "молоко",
+        "молочка"
+      ]
+    },
+    {
+      "id": "prostokvashino-milk-35-930",
+      "name": "Молоко Простоквашино 3,5%, 930 мл",
+      "brand": "Простоквашино",
+      "pack": "930 мл",
+      "aliases": [
+        "молоко",
+        "простоквашино"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://prostokvashino.ru/products/pasterizovannoe/",
+      "category_id": "milk",
+      "category_label": "Молоко",
+      "category_aliases": [
+        "молоко",
+        "молочка"
+      ]
+    },
+    {
+      "id": "ecomilk-butter-100",
+      "name": "Масло сливочное Экомилк 82,5%, 100 г",
+      "brand": "Экомилк",
+      "pack": "100 г",
+      "aliases": [
+        "масло",
+        "масло сливочное",
+        "экомилк"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://ecomilk.ru/catalog/ecomilk/butter/maslo_sliva/",
+      "category_id": "butter",
+      "category_label": "Масло сливочное",
+      "category_aliases": [
+        "масло",
+        "сливочное масло"
+      ]
+    },
+    {
+      "id": "ecomilk-butter-300",
+      "name": "Масло сливочное Экомилк 82,5%, 300 г",
+      "brand": "Экомилк",
+      "pack": "300 г",
+      "aliases": [
+        "масло",
+        "масло сливочное",
+        "экомилк"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://ecomilk.ru/catalog/ecomilk/butter/maslo_sliva/",
+      "category_id": "butter",
+      "category_label": "Масло сливочное",
+      "category_aliases": [
+        "масло",
+        "сливочное масло"
+      ]
+    },
+    {
+      "id": "ecomilk-butter-450",
+      "name": "Масло сливочное Экомилк 82,5%, 450 г",
+      "brand": "Экомилк",
+      "pack": "450 г",
+      "aliases": [
+        "масло",
+        "масло сливочное",
+        "экомилк"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://ecomilk.ru/catalog/ecomilk/butter/maslo_sliva/",
+      "category_id": "butter",
+      "category_label": "Масло сливочное",
+      "category_aliases": [
+        "масло",
+        "сливочное масло"
+      ]
+    },
+    {
+      "id": "svyatoi-istochnik-water-05",
+      "name": "Вода негазированная Святой Источник, 0,5 л",
+      "brand": "Святой Источник",
+      "pack": "0,5 л",
+      "aliases": [
+        "вода",
+        "святой источник"
+      ],
+      "source": "manufacturer_catalog",
+      "source_url": "https://svyatoyistochnik.com/products/",
+      "category_id": "water",
+      "category_label": "Вода",
+      "category_aliases": [
+        "вода",
+        "питьевая вода"
+      ]
     }
   ]
 }

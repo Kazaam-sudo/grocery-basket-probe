@@ -49,19 +49,39 @@
               <select id="address-select"></select>
             </label>
 
-            <div class="product-search" role="group" aria-label="Выбрать товар из каталога">
-              <div class="quick-add">
-                <input id="quick-add-input" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="product-suggestions" aria-expanded="false" placeholder="Начните вводить: молоко, кофе, йогурт…" />
-                <button class="add-button" id="add-item-button" type="button" disabled>Добавить</button>
+            <div class="product-selector" role="group" aria-label="Выбрать товар из каталога">
+              <div class="selector-field">
+                <label class="selector-label" for="quick-add-input">Товар</label>
+                <div class="selector-control">
+                  <input id="quick-add-input" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="product-suggestions" aria-expanded="false" placeholder="Начните вводить: молоко, кофе, йогурт…" />
+                  <div class="selector-suggestions hidden" id="product-suggestions" role="listbox"></div>
+                </div>
               </div>
-              <div class="product-suggestions hidden" id="product-suggestions" role="listbox"></div>
+              <div class="selector-field hidden" id="brand-step">
+                <label class="selector-label" for="brand-search-input">Бренд</label>
+                <div class="selector-control">
+                  <input id="brand-search-input" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="brand-suggestions" aria-expanded="false" placeholder="Начните вводить бренд" disabled />
+                  <div class="selector-suggestions hidden" id="brand-suggestions" role="listbox"></div>
+                </div>
+              </div>
+              <div class="selector-field hidden" id="pack-step">
+                <label class="selector-label" for="pack-search-input">Упаковка</label>
+                <div class="selector-control">
+                  <input id="pack-search-input" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="pack-suggestions" aria-expanded="false" placeholder="Начните вводить вес или объём" disabled />
+                  <div class="selector-suggestions hidden" id="pack-suggestions" role="listbox"></div>
+                </div>
+              </div>
               <div class="selected-product" id="selected-product" aria-live="polite">
-                <span>Выберите точный товар из подсказок — бренд и упаковка подставятся автоматически.</span>
+                <span>Сначала выберите товар, затем бренд и упаковку из каталога.</span>
+              </div>
+              <div class="selector-actions">
+                <button class="add-button" id="add-item-button" type="button" disabled>Добавить в корзину</button>
               </div>
             </div>
-            <p class="input-hint">Выбирайте конкретную карточку товара: так мы не сравним разные упаковки или бренды. Список по строкам ниже можно вставить для чернового набора.</p>
+            <p class="input-hint">Текст здесь только фильтрует каталог. Произвольное название добавить нельзя: выберите товар, бренд и фасовку.</p>
 
-            <label class="sr-only" for="basket-input">Список продуктов по одному в строке</label>
+            <p class="draft-list-label">Черновой список · можно вставить строки, но точное сопоставление будет только для выбранных карточек.</p>
+            <label class="sr-only" for="basket-input">Черновой список продуктов по одному в строке</label>
             <textarea id="basket-input" rows="4" placeholder="молоко 2,5% 1 л\nбананы 1 кг\nяйца 10 шт"></textarea>
 
             <div class="quick-picks" aria-label="Популярные товары">

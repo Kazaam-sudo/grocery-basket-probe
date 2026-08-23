@@ -26,119 +26,230 @@ function catalogItems() {
   return Array.isArray(state.catalog?.items) ? state.catalog.items : [];
 }
 
-function productSearchText(product) {
+function categoryOptions() {
+  const groups = new Map();
+  catalogItems().forEach((item) => {
+    const id = item.category_id || normalize(item.aliases?.[0] || item.name);
+    const label = item.category_label || item.aliases?.[0] || item.name;
+    if (!groups.has(id)) {
+      groups.set(id, { id, label, aliases: item.category_aliases || item.aliases || [], variants: [] });
+    }
+    groups.get(id).variants.push(item);
+  });
+  return [...groups.values()];
+}
+
+function searchOptionText(option) {
   return normalize([
-    product.name,
-    product.brand,
-    ...(product.aliases || []),
-    ...(product.search_terms || []),
+    option.label,
+    option.brand,
+    option.pack,
+    ...(option.aliases || []),
   ].filter(Boolean).join(" "));
 }
 
-function productSuggestions(query) {
+function filterOptions(options, query) {
   const needle = normalize(query);
   if (!needle) return [];
-  return catalogItems()
-    .map((product, index) => {
-      const name = normalize(product.name);
-      const brand = normalize(product.brand || "");
-      const aliases = (product.aliases || []).map(normalize);
-      const score = name.startsWith(needle) ? 0 : brand.startsWith(needle) ? 1 : aliases.some((alias) => alias.startsWith(needle)) ? 2 : 3;
-      return { product, index, score };
+  return options
+    .map((option, index) => {
+      const text = searchOptionText(option);
+      const score = text.startsWith(needle) ? 0 : option.label && normalize(option.label).startsWith(needle) ? 1 : 2;
+      return { option, index, score };
     })
-    .filter(({ product }) => productSearchText(product).includes(needle))
+    .filter(({ option }) => searchOptionText(option).includes(needle))
     .sort((left, right) => left.score - right.score || left.index - right.index)
     .slice(0, 7)
-    .map(({ product }) => product);
+    .map(({ option }) => option);
 }
 
-function renderSelectedProduct() {
-  const container = $("#selected-product");
-  const button = $("#add-item-button");
-  if (!container) return;
-  if (!state.pendingProduct) {
-    container.innerHTML = "<span>Выберите точный товар из подсказок — бренд и упаковка подставятся автоматически.</span>";
-    if (button) button.disabled = true;
-    return;
+function brandOptions(query) {
+  if (!state.pendingCategory) return [];
+  const brands = new Map();
+  state.pendingCategory.variants.forEach((variant) => {
+    const brand = variant.brand || "Без бренда";
+    if (!brands.has(brand)) brands.set(brand, { id: brand, label: brand, aliases: [brand], variants: [] });
+    brands.get(brand).variants.push(variant);
+  });
+  return filterOptions([...brands.values()], query);
+}
+
+function packOptions(query) {
+  if (!state.pendingCategory || !state.pendingBrand) return [];
+  const variants = state.pendingCategory.variants
+    .filter((variant) => (variant.brand || "Без бренда") === state.pendingBrand)
+    .map((variant) => ({ id: variant.id, label: variant.pack, pack: variant.pack, variant }));
+  return filterOptions(variants, query);
+}
+
+function selectorInput(field) {
+  return $({
+    product: "#quick-add-input",
+    brand: "#brand-search-input",
+    pack: "#pack-search-input",
+  }[field]);
+}
+
+function selectorList(field) {
+  return $({
+    product: "#product-suggestions",
+    brand: "#brand-suggestions",
+    pack: "#pack-suggestions",
+  }[field]);
+}
+
+function selectorOptions(field, query) {
+  if (field === "product") return filterOptions(categoryOptions(), query);
+  if (field === "brand") return brandOptions(query);
+  return packOptions(query);
+}
+
+function renderSelectorState() {
+  const brandStep = $("#brand-step");
+  const packStep = $("#pack-step");
+  const brandInput = selectorInput("brand");
+  const packInput = selectorInput("pack");
+  const addButton = $("#add-item-button");
+  brandStep.classList.toggle("hidden", !state.pendingCategory);
+  packStep.classList.toggle("hidden", !state.pendingBrand);
+  brandInput.disabled = !state.pendingCategory;
+  packInput.disabled = !state.pendingBrand;
+  addButton.disabled = !state.pendingProduct;
+
+  const selected = $("#selected-product");
+  if (state.pendingProduct) {
+    const details = [state.pendingProduct.brand, state.pendingProduct.pack].filter(Boolean).join(" · ");
+    selected.innerHTML = "<strong>Выбрано:</strong> " + escapeHtml(state.pendingProduct.name) + "<span>" + escapeHtml(details) + "</span>";
+  } else if (state.pendingBrand) {
+    selected.innerHTML = "<span>Теперь выберите упаковку из доступных фасовок.</span>";
+  } else if (state.pendingCategory) {
+    selected.innerHTML = "<span>Товар выбран. Теперь выберите бренд из каталога.</span>";
+  } else {
+    selected.innerHTML = "<span>Сначала выберите товар, затем бренд и упаковку из каталога.</span>";
   }
-  const details = [state.pendingProduct.brand, state.pendingProduct.pack].filter(Boolean).join(" · ");
-  container.innerHTML = "<strong>Выбрано:</strong> " + escapeHtml(state.pendingProduct.name) + "<span>" + escapeHtml(details) + "</span>";
-  if (button) button.disabled = false;
 }
 
-function renderProductSuggestions() {
-  const container = $("#product-suggestions");
-  const input = $("#quick-add-input");
-  if (!container || !input) return;
+function renderSelectorSuggestions(field) {
+  const list = selectorList(field);
+  const input = selectorInput(field);
+  if (!list || !input) return;
   const query = input.value.trim();
-  if (!query || !state.suggestions.length) {
-    container.classList.add("hidden");
+  const suggestions = state.suggestions[field] || [];
+  if (!query || !suggestions.length) {
+    list.classList.add("hidden");
     input.setAttribute("aria-expanded", "false");
-    container.innerHTML = "";
+    list.innerHTML = "";
     return;
   }
-  container.classList.remove("hidden");
+  list.classList.remove("hidden");
   input.setAttribute("aria-expanded", "true");
-  container.innerHTML = state.suggestions.map((product, index) => "<button type=\"button\" class=\"product-suggestion " + (index === state.suggestionIndex ? "is-active" : "") + "\" role=\"option\" aria-selected=\"" + (index === state.suggestionIndex) + "\" data-product-id=\"" + escapeHtml(product.id) + "\"><span class=\"product-suggestion-name\">" + escapeHtml(product.name) + "</span><span class=\"product-suggestion-meta\">" + escapeHtml([product.brand, product.pack].filter(Boolean).join(" · ")) + "</span></button>").join("");
+  list.innerHTML = suggestions.map((option, index) => {
+    const label = option.label;
+    const meta = field === "product"
+      ? (option.variants.length + " " + pluralize(option.variants.length, "вариант", "варианта", "вариантов"))
+      : field === "brand"
+        ? (option.variants.length + " " + pluralize(option.variants.length, "фасовка", "фасовки", "фасовок"))
+        : option.variant.name;
+    return "<button type=\"button\" class=\"selector-suggestion " + (index === state.suggestionIndex[field] ? "is-active" : "") + "\" role=\"option\" aria-selected=\"" + (index === state.suggestionIndex[field]) + "\" data-option-field=\"" + field + "\" data-option-id=\"" + escapeHtml(option.id) + "\"><span class=\"selector-suggestion-name\">" + escapeHtml(label) + "</span><span class=\"selector-suggestion-meta\">" + escapeHtml(meta) + "</span></button>";
+  }).join("");
 }
 
-function handleProductInput(event) {
-  state.pendingProduct = null;
-  state.suggestionIndex = -1;
-  state.suggestions = productSuggestions(event.target.value);
-  renderSelectedProduct();
-  renderProductSuggestions();
+function clearSuggestions() {
+  ["product", "brand", "pack"].forEach((field) => {
+    state.suggestions[field] = [];
+    state.suggestionIndex[field] = -1;
+    renderSelectorSuggestions(field);
+  });
 }
 
-function selectProduct(product) {
-  if (!product) return;
-  state.pendingProduct = product;
-  state.suggestionIndex = -1;
-  state.suggestions = [];
-  $("#quick-add-input").value = product.name;
-  renderSelectedProduct();
-  renderProductSuggestions();
+function handleSelectorInput(field, event) {
+  if (field === "product") {
+    state.pendingCategory = null;
+    state.pendingBrand = null;
+    state.pendingProduct = null;
+    selectorInput("brand").value = "";
+    selectorInput("pack").value = "";
+  } else if (field === "brand") {
+    state.pendingBrand = null;
+    state.pendingProduct = null;
+    selectorInput("pack").value = "";
+  } else {
+    state.pendingProduct = null;
+  }
+  state.suggestionIndex[field] = -1;
+  state.suggestions[field] = selectorOptions(field, event.target.value);
+  renderSelectorState();
+  renderSelectorSuggestions(field);
 }
 
-function handleProductKeydown(event) {
-  if (event.key === "ArrowDown" && state.suggestions.length) {
-    event.preventDefault();
-    state.suggestionIndex = Math.min(state.suggestionIndex + 1, state.suggestions.length - 1);
-    renderProductSuggestions();
+function selectSelectorOption(field, id) {
+  const option = (state.suggestions[field] || []).find((entry) => entry.id === id);
+  if (!option) return;
+  if (field === "product") {
+    state.pendingCategory = option;
+    state.pendingBrand = null;
+    state.pendingProduct = null;
+    selectorInput("product").value = option.label;
+    selectorInput("brand").value = "";
+    selectorInput("pack").value = "";
+    renderSelectorState();
+    clearSuggestions();
+    selectorInput("brand").focus();
     return;
   }
-  if (event.key === "ArrowUp" && state.suggestions.length) {
+  if (field === "brand") {
+    state.pendingBrand = option.label;
+    state.pendingProduct = null;
+    selectorInput("brand").value = option.label;
+    selectorInput("pack").value = "";
+    renderSelectorState();
+    clearSuggestions();
+    selectorInput("pack").focus();
+    return;
+  }
+  state.pendingProduct = option.variant;
+  selectorInput("pack").value = option.variant.pack;
+  renderSelectorState();
+  clearSuggestions();
+}
+
+function handleSelectorKeydown(field, event) {
+  const suggestions = state.suggestions[field] || [];
+  if (event.key === "ArrowDown" && suggestions.length) {
     event.preventDefault();
-    state.suggestionIndex = Math.max(state.suggestionIndex - 1, 0);
-    renderProductSuggestions();
+    state.suggestionIndex[field] = Math.min(state.suggestionIndex[field] + 1, suggestions.length - 1);
+    renderSelectorSuggestions(field);
+    return;
+  }
+  if (event.key === "ArrowUp" && suggestions.length) {
+    event.preventDefault();
+    state.suggestionIndex[field] = Math.max(state.suggestionIndex[field] - 1, 0);
+    renderSelectorSuggestions(field);
     return;
   }
   if (event.key === "Escape") {
-    state.suggestions = [];
-    state.suggestionIndex = -1;
-    renderProductSuggestions();
+    state.suggestions[field] = [];
+    state.suggestionIndex[field] = -1;
+    renderSelectorSuggestions(field);
     return;
   }
   if (event.key === "Enter") {
     event.preventDefault();
-    if (state.suggestions[state.suggestionIndex]) {
-      selectProduct(state.suggestions[state.suggestionIndex]);
-    } else if (state.pendingProduct) {
+    const option = suggestions[state.suggestionIndex[field]];
+    if (option) {
+      selectSelectorOption(field, option.id);
+    } else if (field === "pack" && state.pendingProduct) {
       addSelectedProduct();
     } else {
-      $("#data-status").textContent = "Сначала выберите товар из подсказок";
+      $("#data-status").textContent = "Выберите вариант из списка";
     }
   }
 }
 
 function focusProductSearch(query) {
-  const input = $("#quick-add-input");
+  const input = selectorInput("product");
   input.value = query;
-  state.pendingProduct = null;
-  state.suggestions = productSuggestions(query);
-  state.suggestionIndex = -1;
-  renderSelectedProduct();
-  renderProductSuggestions();
+  handleSelectorInput("product", { target: input });
   input.focus();
 }
 
@@ -337,8 +448,8 @@ function copyRetailerList(retailerId) {
 function addSelectedProduct() {
   const product = state.pendingProduct;
   if (!product) {
-    $("#data-status").textContent = "Сначала выберите товар из подсказок";
-    $("#quick-add-input").focus();
+    $("#data-status").textContent = "Сначала выберите упаковку из списка";
+    selectorInput("pack").focus();
     return;
   }
   const existing = state.basketItems.find((item) => item.productId === product.id);
@@ -352,19 +463,23 @@ function addSelectedProduct() {
       query: product.name,
       brand: product.brand || "",
       pack: product.pack || "",
-      searchTerms: [...(product.aliases || []), ...(product.search_terms || [])],
+      searchTerms: [...(product.aliases || []), ...(product.search_terms || []), product.category_label || ""],
       source: product.source || "",
       sourceUrl: product.source_url || "",
       quantity: 1,
     });
   }
   setTextareaFromItems();
+  state.pendingCategory = null;
+  state.pendingBrand = null;
   state.pendingProduct = null;
-  state.suggestions = [];
-  state.suggestionIndex = -1;
-  $("#quick-add-input").value = "";
-  renderSelectedProduct();
-  renderProductSuggestions();
+  state.suggestions = { product: [], brand: [], pack: [] };
+  state.suggestionIndex = { product: -1, brand: -1, pack: -1 };
+  selectorInput("product").value = "";
+  selectorInput("brand").value = "";
+  selectorInput("pack").value = "";
+  renderSelectorState();
+  clearSuggestions();
   renderBasket();
   $("#data-status").textContent = "Добавлен товар: " + product.name;
 }
@@ -398,34 +513,44 @@ async function init() {
     state.catalog = await catalogResponse.json();
     if (!Array.isArray(state.catalog.items)) throw new Error("каталог имеет неверный формат");
     state.selectedAddress = state.snapshot.addresses[0].id;
+    state.pendingCategory = null;
+    state.pendingBrand = null;
+    state.pendingProduct = null;
+    state.suggestions = { product: [], brand: [], pack: [] };
+    state.suggestionIndex = { product: -1, brand: -1, pack: -1 };
     $("#address-select").innerHTML = state.snapshot.addresses.map((address) => "<option value=\"" + address.id + "\">" + address.label + "</option>").join("");
     $("#summary-location").textContent = state.snapshot.addresses[0].label;
     $("#snapshot-time").textContent = formatSnapshotTime(state.snapshot.generated_at);
     $("#data-status").textContent = "Каталог готов · " + state.catalog.items.length + " реальных карточек · цены демо-снимка";
     $("#basket-input").value = EXAMPLE_BASKET.slice(0, 3).join("\n");
     syncBasketFromTextarea();
-    renderSelectedProduct();
+    renderSelectorState();
 
     $("#basket-input").addEventListener("input", syncBasketFromTextarea);
     $("#address-select").addEventListener("change", (event) => {
       state.selectedAddress = event.target.value;
       $("#summary-location").textContent = state.snapshot.addresses.find((address) => address.id === state.selectedAddress).label;
     });
-    $("#quick-add-input").addEventListener("input", handleProductInput);
-    $("#quick-add-input").addEventListener("keydown", handleProductKeydown);
+    ["product", "brand", "pack"].forEach((field) => {
+      const input = selectorInput(field);
+      input.addEventListener("input", (event) => handleSelectorInput(field, event));
+      input.addEventListener("keydown", (event) => handleSelectorKeydown(field, event));
+      input.addEventListener("focus", () => {
+        if (field !== "product" && !input.value && selectorOptions(field, "")) return;
+        if (input.value) {
+          state.suggestions[field] = selectorOptions(field, input.value);
+          renderSelectorSuggestions(field);
+        }
+      });
+    });
     $("#add-item-button").addEventListener("click", addSelectedProduct);
-    $("#product-suggestions").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-product-id]");
-      if (!button) return;
-      const product = catalogItems().find((entry) => entry.id === button.dataset.productId);
-      selectProduct(product);
+    $(".product-selector").addEventListener("click", (event) => {
+      const option = event.target.closest("[data-option-field][data-option-id]");
+      if (!option) return;
+      selectSelectorOption(option.dataset.optionField, option.dataset.optionId);
     });
     document.addEventListener("click", (event) => {
-      if (!event.target.closest(".product-search")) {
-        state.suggestions = [];
-        state.suggestionIndex = -1;
-        renderProductSuggestions();
-      }
+      if (!event.target.closest(".product-selector")) clearSuggestions();
     });
     $(".quick-picks").addEventListener("click", (event) => {
       if (event.target.matches("[data-item]")) focusProductSearch(event.target.dataset.item);
