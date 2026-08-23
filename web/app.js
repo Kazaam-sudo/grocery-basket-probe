@@ -78,7 +78,7 @@ function packOptions(query) {
   if (!state.pendingCategory || !state.pendingBrand) return [];
   const variants = state.pendingCategory.variants
     .filter((variant) => (variant.brand || "Без бренда") === state.pendingBrand)
-    .map((variant) => ({ id: variant.id, label: variant.pack, pack: variant.pack, variant }));
+    .map((variant) => ({ id: variant.id, label: variant.pack, pack: variant.pack, aliases: [variant.name, ...(variant.aliases || [])], variant }));
   return filterOptions(variants, query);
 }
 
