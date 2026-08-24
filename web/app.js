@@ -525,7 +525,8 @@ async function init() {
     $("#address-select").innerHTML = state.snapshot.addresses.map((address) => "<option value=\"" + address.id + "\">" + address.label + "</option>").join("");
     $("#summary-location").textContent = state.snapshot.addresses[0].label;
     $("#snapshot-time").textContent = formatSnapshotTime(state.snapshot.generated_at);
-    $("#data-status").textContent = "Каталог готов · " + state.catalog.items.length + " реальных карточек · цены демо-снимка";
+    const catalogSource = state.catalog.snapshot_retailer === "perekrestok" ? "каталог Перекрёстка" : "публичный каталог";
+    $("#data-status").textContent = catalogSource + " · " + state.catalog.items.length + " карточек · цены демо-снимка";
     $("#basket-input").value = EXAMPLE_BASKET.slice(0, 3).join("\n");
     syncBasketFromTextarea();
     renderSelectorState();
