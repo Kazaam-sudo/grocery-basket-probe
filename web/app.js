@@ -368,10 +368,14 @@ function findOffer(retailer, item) {
   return candidates.find((offer) => matchesTextConstraint(item.brand, offer.brand) && matchesPackConstraint(item.pack, offer.pack)) || null;
 }
 
+function isUsableOffer(offer) {
+  return offer?.available !== false && offer?.price != null;
+}
+
 function buildQuote(items) {
   return state.snapshot.retailers.map((retailer) => {
     const matchedItems = items.map((item) => ({ ...item, offer: findOffer(retailer, item) }));
-    const found = matchedItems.filter(({ offer }) => offer?.available !== false && offer?.price != null);
+      const found = matchedItems.filter(({ offer }) => isUsableOffer(offer));
     return {
       ...retailer,
       items: matchedItems,
@@ -387,22 +391,52 @@ function renderRetailers() {
   const fullCoverage = state.quote.filter((retailer) => retailer.coverage === 1 && retailer.foundCount > 0);
   const best = [...(fullCoverage.length ? fullCoverage : state.quote)].sort((a, b) => b.coverage - a.coverage || a.total - b.total)[0];
   const itemCount = state.basketItems.length;
+  const recommendationText = best
+    ? best.coverage === 1
+      ? `<strong>${best.name}</strong> — полное покрытие: ${best.foundCount} из ${itemCount}. Сейчас это самый низкий ориентир.`
+      : `<strong>${best.name}</strong> — найдено ${best.foundCount} из ${itemCount} позиций (${Math.round(best.coverage * 100)}%). Сумма ниже только за найденные товары.`
+    : `<strong>Не удалось найти позиции.</strong> Попробуйте более короткие названия.`;
+  const comparisonNote = fullCoverage.length
+    ? "Доставка и персональные скидки не учтены"
+    : "Для честного сравнения сопоставляйте магазины с одинаковым покрытием";
   $("#recommendation").innerHTML = best
-    ? `<span><strong>${best.name}</strong> — ${best.coverage === 1 ? "все позиции найдены" : `нашли ${best.foundCount} из ${itemCount}`}. ${best.coverage === 1 ? "Сейчас это самый низкий ориентир." : "Уточните недостающие товары перед покупкой."}</span><span>Доставка и персональные скидки не учтены</span>`
-    : `<span><strong>Не удалось найти позиции.</strong> Попробуйте более короткие названия.</span>`;
+    ? `<span>${recommendationText}</span><span>${comparisonNote}</span>`
+    : `<span>${recommendationText}</span>`;
 
   $("#retailer-grid").innerHTML = state.quote.map((retailer) => {
     const isRecommended = retailer.id === best?.id;
     const status = retailer.coverage === 1 ? "Все позиции" : `${retailer.foundCount} из ${itemCount}`;
+    const foundItems = retailer.items.filter(({ offer }) => isUsableOffer(offer));
+    const missingItems = retailer.items.filter(({ offer }) => !isUsableOffer(offer));
+    const foundList = foundItems.length
+      ? `<ul>${foundItems.map(({ query, offer, quantity }) => `<li><span>${escapeHtml(query)}</span><strong>${formatMoney(offer.price * quantity)}</strong></li>`).join("")}</ul>`
+      : `<p class="coverage-empty">Нет найденных предложений.</p>`;
+    const missingList = missingItems.length
+      ? `<ul>${missingItems.map(({ query }) => `<li>${escapeHtml(query)}</li>`).join("")}</ul>`
+      : `<p class="coverage-empty">Все позиции найдены.</p>`;
+    const detailsId = `coverage-details-${retailer.id}`;
     return `<article class="retailer-card ${isRecommended ? "is-recommended" : ""}">
       <div class="retailer-top"><div><h3 class="retailer-name">${retailer.name}</h3><p class="retailer-subtitle">${retailer.subtitle}</p></div><span class="card-status ${retailer.coverage < 1 ? "warning" : ""}">${status}</span></div>
-      <div class="retailer-total">${formatMoney(retailer.total)}<small>товары</small></div>
+      <div class="retailer-total">${formatMoney(retailer.total)}<small>за найденные</small></div>
+      <div class="coverage-breakdown"><span class="coverage-found">✓ Найдено: ${foundItems.length}</span><span class="coverage-missing">${missingItems.length ? `× Не найдено: ${missingItems.length}` : "✓ Всё найдено"}</span></div>
       <div class="card-meta"><span>Покрытие: ${Math.round(retailer.coverage * 100)}%</span><span>${retailer.unitCount} шт.</span></div>
+      <button class="coverage-toggle" type="button" data-coverage-toggle="${detailsId}" aria-expanded="false">Показать позиции</button>
+      <div class="coverage-details hidden" id="${detailsId}">
+        <div><strong>Найдено</strong>${foundList}</div>
+        <div><strong>Не найдено</strong>${missingList}</div>
+      </div>
       <div class="card-actions"><a class="primary-button" href="${retailer.public_url}" target="_blank" rel="noreferrer">Открыть сайт ↗</a><button class="secondary-button" type="button" data-retailer="${retailer.id}">Список</button></div>
     </article>`;
   }).join("");
 
   $("#retailer-grid").querySelectorAll("button[data-retailer]").forEach((button) => button.addEventListener("click", () => copyRetailerList(button.dataset.retailer)));
+  $("#retailer-grid").querySelectorAll("button[data-coverage-toggle]").forEach((button) => button.addEventListener("click", () => {
+    const details = $("#" + button.dataset.coverageToggle);
+    const expanded = button.getAttribute("aria-expanded") === "true";
+    details.classList.toggle("hidden", expanded);
+    button.setAttribute("aria-expanded", String(!expanded));
+    button.textContent = expanded ? "Показать позиции" : "Скрыть позиции";
+  }));
 }
 
 function renderItemsTable() {
@@ -410,7 +444,7 @@ function renderItemsTable() {
     const offers = state.quote.map((retailer) => retailer.items.find((match) => match.id === item.id)?.offer);
     const primaryOffer = offers.find(Boolean);
     const availableOffers = offers.filter((offer) => offer?.available !== false && offer?.price != null);
-    const status = availableOffers.length === offers.length ? ["все сети", ""] : availableOffers.length ? ["частично", "warning"] : ["не найдено", "danger"];
+    const status = availableOffers.length === offers.length ? [`все ${offers.length} сети`, ""] : availableOffers.length ? [`${availableOffers.length} из ${offers.length} сетей`, "warning"] : ["не найдено", "danger"];
     const brand = item.brand || primaryOffer?.brand || "—";
     const pack = item.pack || primaryOffer?.pack || "—";
     return `<tr><td><strong>${escapeHtml(item.query)}</strong></td><td>${escapeHtml(brand)}</td><td>${item.quantity}</td><td>${escapeHtml(pack)}</td>${offers.map((offer) => `<td class="price-cell ${offer?.available === false || offer?.price == null ? "unavailable" : ""}">${offer?.available === false ? "нет" : offer?.price != null ? formatMoney(offer.price * item.quantity) : "—"}</td>`).join("")}<td><span class="item-status ${status[1]}">${status[0]}</span></td></tr>`;
