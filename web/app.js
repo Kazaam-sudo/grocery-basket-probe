@@ -194,6 +194,8 @@ function selectSelectorOption(field, id) {
     selectorInput("pack").value = "";
     renderSelectorState();
     clearSuggestions();
+    state.suggestions.brand = selectorOptions("brand", "");
+    renderSelectorSuggestions("brand");
     selectorInput("brand").focus();
     return;
   }
@@ -204,6 +206,8 @@ function selectSelectorOption(field, id) {
     selectorInput("pack").value = "";
     renderSelectorState();
     clearSuggestions();
+    state.suggestions.pack = selectorOptions("pack", "");
+    renderSelectorSuggestions("pack");
     selectorInput("pack").focus();
     return;
   }
@@ -545,6 +549,7 @@ async function init() {
     $(".product-selector").addEventListener("click", (event) => {
       const option = event.target.closest("[data-option-field][data-option-id]");
       if (!option) return;
+      event.stopPropagation();
       selectSelectorOption(option.dataset.optionField, option.dataset.optionId);
     });
     document.addEventListener("click", (event) => {
