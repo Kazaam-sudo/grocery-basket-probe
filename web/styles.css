@@ -143,6 +143,14 @@ select:focus, textarea:focus, input:focus { border-color: #d37a70; background: #
 .section-subtitle { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
 .recommendation { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 15px; padding: 14px 16px; border: 1px solid #b9d7c0; border-radius: 13px; color: var(--green-dark); background: var(--green-soft); font-size: 12px; }
 .recommendation strong { color: var(--green-dark); }
+.comparison-scope { display: grid; gap: 7px; margin-bottom: 15px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 13px; color: var(--muted); background: var(--panel); font-size: 11px; }
+.comparison-scope > strong { color: var(--ink); font-size: 12px; }
+.comparison-scope-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.comparison-scope-items span { padding: 4px 7px; border-radius: 6px; color: var(--green-dark); background: var(--green-soft); font-size: 10px; font-weight: 700; }
+.comparison-excluded { color: var(--soft-muted); font-size: 10px; line-height: 1.4; }
+.comparison-excluded strong { color: #9b5a48; }
+.comparison-scope.is-empty { border-color: #e6c2b9; color: #9b5a48; background: #fff8f5; }
+.comparison-scope.is-empty > strong { color: #9b5a48; }
 .retailer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .retailer-card { position: relative; display: flex; min-height: 218px; flex-direction: column; padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: var(--panel); }
 .retailer-card.is-recommended { border-color: #82af8e; box-shadow: 0 12px 33px rgba(52, 124, 82, 0.13); }
