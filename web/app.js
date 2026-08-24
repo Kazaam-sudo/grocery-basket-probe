@@ -9,7 +9,7 @@ const EXAMPLE_BASKET = [
   "туалетная бумага 8 рулонов",
 ];
 
-const state = { snapshot: null, catalog: null, selectedAddress: null, basketItems: [], quote: null, pendingProduct: null, suggestions: [], suggestionIndex: -1 };
+const state = { snapshot: null, catalog: null, selectedAddress: null, basketItems: [], quote: null, comparison: null, pendingProduct: null, suggestions: [], suggestionIndex: -1 };
 const $ = (selector) => document.querySelector(selector);
 
 function normalize(value) {
@@ -375,7 +375,7 @@ function isUsableOffer(offer) {
 function buildQuote(items) {
   return state.snapshot.retailers.map((retailer) => {
     const matchedItems = items.map((item) => ({ ...item, offer: findOffer(retailer, item) }));
-      const found = matchedItems.filter(({ offer }) => isUsableOffer(offer));
+    const found = matchedItems.filter(({ offer }) => isUsableOffer(offer));
     return {
       ...retailer,
       items: matchedItems,
@@ -387,39 +387,63 @@ function buildQuote(items) {
   });
 }
 
-function renderRetailers() {
-  const fullCoverage = state.quote.filter((retailer) => retailer.coverage === 1 && retailer.foundCount > 0);
-  const best = [...(fullCoverage.length ? fullCoverage : state.quote)].sort((a, b) => b.coverage - a.coverage || a.total - b.total)[0];
-  const itemCount = state.basketItems.length;
-  const recommendationText = best
-    ? best.coverage === 1
-      ? `<strong>${best.name}</strong> — полное покрытие: ${best.foundCount} из ${itemCount}. Сейчас это самый низкий ориентир.`
-      : `<strong>${best.name}</strong> — найдено ${best.foundCount} из ${itemCount} позиций (${Math.round(best.coverage * 100)}%). Сумма ниже только за найденные товары.`
-    : `<strong>Не удалось найти позиции.</strong> Попробуйте более короткие названия.`;
-  const comparisonNote = fullCoverage.length
-    ? "Доставка и персональные скидки не учтены"
-    : "Для честного сравнения сопоставляйте магазины с одинаковым покрытием";
-  $("#recommendation").innerHTML = best
-    ? `<span>${recommendationText}</span><span>${comparisonNote}</span>`
-    : `<span>${recommendationText}</span>`;
+function buildComparableQuote(quote, items) {
+  const commonItems = items.filter((item) => quote.every((retailer) => {
+    const match = retailer.items.find(({ id }) => id === item.id);
+    return isUsableOffer(match?.offer);
+  }));
+  const commonIds = new Set(commonItems.map((item) => item.id));
+  const retailers = quote.map((retailer) => {
+    const comparableItems = retailer.items.filter(({ id }) => commonIds.has(id));
+    return {
+      ...retailer,
+      comparableItems,
+      comparableUnitCount: comparableItems.reduce((sum, item) => sum + item.quantity, 0),
+      comparableTotal: comparableItems.reduce((sum, item) => sum + item.offer.price * item.quantity, 0),
+    };
+  });
+  return { items: commonItems, retailers };
+}
 
-  $("#retailer-grid").innerHTML = state.quote.map((retailer) => {
-    const isRecommended = retailer.id === best?.id;
-    const status = retailer.coverage === 1 ? "Все позиции" : `${retailer.foundCount} из ${itemCount}`;
-    const foundItems = retailer.items.filter(({ offer }) => isUsableOffer(offer));
-    const missingItems = retailer.items.filter(({ offer }) => !isUsableOffer(offer));
+function renderComparisonScope() {
+  const scope = $("#comparison-scope");
+  const commonItems = state.comparison?.items || [];
+  const excludedItems = state.basketItems.filter((item) => !commonItems.some((commonItem) => commonItem.id === item.id));
+  if (!commonItems.length) {
+    scope.innerHTML = `<strong>Нет общей корзины для сравнения</strong><span>Ни одна позиция не найдена одновременно во всех выбранных сетях. Добавьте более универсальные товары или сократите список.</span>`;
+    scope.className = "comparison-scope is-empty";
+    return;
+  }
+  scope.className = "comparison-scope";
+  scope.innerHTML = `<strong>Сравниваем одинаковую корзину: ${commonItems.length} из ${state.basketItems.length} позиций</strong><span>Итоги ниже рассчитаны только по товарам, которые есть во всех сетях.</span><div class="comparison-scope-items">${commonItems.map((item) => `<span>${escapeHtml(item.query)}</span>`).join("")}</div>${excludedItems.length ? `<div class="comparison-excluded"><strong>Не вошли в сравнение:</strong> ${excludedItems.map((item) => escapeHtml(item.query)).join(" · ")}</div>` : ""}`;
+}
+
+function renderRetailers() {
+  const comparisonQuote = state.comparison?.retailers || [];
+  const commonItems = state.comparison?.items || [];
+  const best = [...comparisonQuote].sort((a, b) => a.comparableTotal - b.comparableTotal)[0];
+  const itemCount = state.basketItems.length;
+  $("#recommendation").innerHTML = commonItems.length
+    ? `<span><strong>${best.name}</strong> — самая низкая сумма за одинаковую корзину из ${commonItems.length} позиций.</span><span>Доставка и персональные скидки не учтены</span>`
+    : `<span><strong>Сравнение невозможно.</strong> Во всех сетях нет ни одной общей позиции.</span><span>Измените список товаров</span>`;
+
+  $("#retailer-grid").innerHTML = comparisonQuote.map((retailer) => {
+    const isRecommended = commonItems.length > 0 && retailer.id === best?.id;
+    const commonCountLabel = pluralize(commonItems.length, "позиция", "позиции", "позиций");
+    const foundItems = retailer.comparableItems;
+    const missingItems = state.basketItems.filter((item) => !commonItems.some((commonItem) => commonItem.id === item.id));
     const foundList = foundItems.length
       ? `<ul>${foundItems.map(({ query, offer, quantity }) => `<li><span>${escapeHtml(query)}</span><strong>${formatMoney(offer.price * quantity)}</strong></li>`).join("")}</ul>`
-      : `<p class="coverage-empty">Нет найденных предложений.</p>`;
+      : `<p class="coverage-empty">Нет общей позиции.</p>`;
     const missingList = missingItems.length
       ? `<ul>${missingItems.map(({ query }) => `<li>${escapeHtml(query)}</li>`).join("")}</ul>`
-      : `<p class="coverage-empty">Все позиции найдены.</p>`;
+      : `<p class="coverage-empty">Вся исходная корзина сравнима.</p>`;
     const detailsId = `coverage-details-${retailer.id}`;
     return `<article class="retailer-card ${isRecommended ? "is-recommended" : ""}">
-      <div class="retailer-top"><div><h3 class="retailer-name">${retailer.name}</h3><p class="retailer-subtitle">${retailer.subtitle}</p></div><span class="card-status ${retailer.coverage < 1 ? "warning" : ""}">${status}</span></div>
-      <div class="retailer-total">${formatMoney(retailer.total)}<small>за найденные</small></div>
-      <div class="coverage-breakdown"><span class="coverage-found">✓ Найдено: ${foundItems.length}</span><span class="coverage-missing">${missingItems.length ? `× Не найдено: ${missingItems.length}` : "✓ Всё найдено"}</span></div>
-      <div class="card-meta"><span>Покрытие: ${Math.round(retailer.coverage * 100)}%</span><span>${retailer.unitCount} шт.</span></div>
+      <div class="retailer-top"><div><h3 class="retailer-name">${retailer.name}</h3><p class="retailer-subtitle">${retailer.subtitle}</p></div><span class="card-status ${commonItems.length ? "" : "warning"}">${commonItems.length ? `${commonItems.length} ${commonCountLabel}` : "нет общих"}</span></div>
+      <div class="retailer-total">${commonItems.length ? formatMoney(retailer.comparableTotal) : "—"}<small>${commonItems.length ? "одинаковая корзина" : "нет сравнения"}</small></div>
+      <div class="coverage-breakdown"><span class="coverage-found">✓ Общие: ${foundItems.length}</span><span class="coverage-missing">${missingItems.length ? `× Исключено: ${missingItems.length}` : "✓ Вся корзина"}</span></div>
+      <div class="card-meta"><span>В магазине найдено: ${retailer.foundCount} из ${itemCount}</span><span>${retailer.comparableUnitCount} шт.</span></div>
       <button class="coverage-toggle" type="button" data-coverage-toggle="${detailsId}" aria-expanded="false">Показать позиции</button>
       <div class="coverage-details hidden" id="${detailsId}">
         <div><strong>Найдено</strong>${foundList}</div>
@@ -440,8 +464,8 @@ function renderRetailers() {
 }
 
 function renderItemsTable() {
-  const rows = state.basketItems.map((item) => {
-    const offers = state.quote.map((retailer) => retailer.items.find((match) => match.id === item.id)?.offer);
+  const rows = (state.comparison?.items || []).map((item) => {
+    const offers = (state.comparison?.retailers || []).map((retailer) => retailer.items.find((match) => match.id === item.id)?.offer);
     const primaryOffer = offers.find(Boolean);
     const availableOffers = offers.filter((offer) => offer?.available !== false && offer?.price != null);
     const status = availableOffers.length === offers.length ? [`все ${offers.length} сети`, ""] : availableOffers.length ? [`${availableOffers.length} из ${offers.length} сетей`, "warning"] : ["не найдено", "danger"];
@@ -463,8 +487,10 @@ function renderResults() {
     return;
   }
   state.quote = buildQuote(state.basketItems);
+  state.comparison = buildComparableQuote(state.quote, state.basketItems);
   const address = state.snapshot.addresses.find((item) => item.id === state.selectedAddress);
-  $("#results-context").textContent = `${address.label} · ${state.basketItems.length} позиций · цены без персональных скидок`;
+  $("#results-context").textContent = `${address.label} · сравнение одинаковой корзины · цены без персональных скидок`;
+  renderComparisonScope();
   renderRetailers();
   renderItemsTable();
   $("#results-section").classList.remove("hidden");
@@ -473,11 +499,11 @@ function renderResults() {
 }
 
 function listText(retailer) {
-  return retailer.items.filter(({ offer }) => offer?.available !== false && offer?.price != null).map(({ query, offer, quantity }) => `${quantity > 1 ? `${quantity} × ` : ""}${query} — ${formatItemSpec({ brand: offer.brand, pack: offer.pack })}, ${offer.name}`).join("\n");
+  return retailer.comparableItems.filter(({ offer }) => isUsableOffer(offer)).map(({ query, offer, quantity }) => `${quantity > 1 ? `${quantity} × ` : ""}${query} — ${formatItemSpec({ brand: offer.brand, pack: offer.pack })}, ${offer.name}`).join("\n");
 }
 
 function copyRetailerList(retailerId) {
-  const retailer = state.quote?.find((item) => item.id === retailerId);
+  const retailer = state.comparison?.retailers?.find((item) => item.id === retailerId);
   if (!retailer) return;
   navigator.clipboard?.writeText(listText(retailer));
   $("#data-status").textContent = `Список для ${retailer.name} скопирован`;
@@ -605,7 +631,11 @@ async function init() {
     $("#compare-button").addEventListener("click", renderResults);
     $("#reset-button").addEventListener("click", () => { $("#results-section").classList.add("hidden"); window.scrollTo({ top: 0, behavior: "smooth" }); });
     $("#copy-list-button").addEventListener("click", () => {
-      const best = [...(state.quote || [])].sort((a, b) => a.total - b.total)[0];
+      if (!state.comparison?.items?.length) {
+        $("#data-status").textContent = "Нет общей корзины для копирования";
+        return;
+      }
+      const best = [...(state.comparison?.retailers || [])].sort((a, b) => a.comparableTotal - b.comparableTotal)[0];
       if (best) copyRetailerList(best.id);
     });
   } catch (error) {
