@@ -50,7 +50,7 @@ function searchOptionText(option) {
 
 function filterOptions(options, query) {
   const needle = normalize(query);
-  if (!needle) return [];
+  if (!needle) return options.slice(0, 7);
   return options
     .map((option, index) => {
       const text = searchOptionText(option);
@@ -135,7 +135,7 @@ function renderSelectorSuggestions(field) {
   if (!list || !input) return;
   const query = input.value.trim();
   const suggestions = state.suggestions[field] || [];
-  if (!query || !suggestions.length) {
+  if (!suggestions.length) {
     list.classList.add("hidden");
     input.setAttribute("aria-expanded", "false");
     list.innerHTML = "";
@@ -536,11 +536,9 @@ async function init() {
       input.addEventListener("input", (event) => handleSelectorInput(field, event));
       input.addEventListener("keydown", (event) => handleSelectorKeydown(field, event));
       input.addEventListener("focus", () => {
-        if (field !== "product" && !input.value && selectorOptions(field, "")) return;
-        if (input.value) {
-          state.suggestions[field] = selectorOptions(field, input.value);
-          renderSelectorSuggestions(field);
-        }
+        state.suggestionIndex[field] = -1;
+        state.suggestions[field] = selectorOptions(field, input.value);
+        renderSelectorSuggestions(field);
       });
     });
     $("#add-item-button").addEventListener("click", addSelectedProduct);
@@ -575,4 +573,3 @@ async function init() {
   }
 }
 init();
-
