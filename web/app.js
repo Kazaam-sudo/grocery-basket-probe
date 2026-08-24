@@ -9,7 +9,7 @@ const EXAMPLE_BASKET = [
   "туалетная бумага 8 рулонов",
 ];
 
-const state = { snapshot: null, selectedAddress: null, basketItems: [], quote: null };
+const state = { snapshot: null, catalog: null, selectedAddress: null, basketItems: [], quote: null, pendingProduct: null, suggestions: [], suggestionIndex: -1 };
 const $ = (selector) => document.querySelector(selector);
 
 function normalize(value) {
@@ -19,6 +19,238 @@ function normalize(value) {
 function extractPack(value) {
   const match = String(value || "").match(/\d+(?:[.,]\d+)?\s*(?:кг|г|л|мл|шт|рулон(?:а|ов)?)/i);
   return match ? match[0] : "";
+}
+
+
+function catalogItems() {
+  return Array.isArray(state.catalog?.items) ? state.catalog.items : [];
+}
+
+function categoryOptions() {
+  const groups = new Map();
+  catalogItems().forEach((item) => {
+    const id = item.category_id || normalize(item.aliases?.[0] || item.name);
+    const label = item.category_label || item.aliases?.[0] || item.name;
+    if (!groups.has(id)) {
+      groups.set(id, { id, label, aliases: item.category_aliases || item.aliases || [], variants: [] });
+    }
+    groups.get(id).variants.push(item);
+  });
+  return [...groups.values()];
+}
+
+function searchOptionText(option) {
+  return normalize([
+    option.label,
+    option.brand,
+    option.pack,
+    ...(option.aliases || []),
+  ].filter(Boolean).join(" "));
+}
+
+function filterOptions(options, query) {
+  const needle = normalize(query);
+  if (!needle) return [];
+  return options
+    .map((option, index) => {
+      const text = searchOptionText(option);
+      const score = text.startsWith(needle) ? 0 : option.label && normalize(option.label).startsWith(needle) ? 1 : 2;
+      return { option, index, score };
+    })
+    .filter(({ option }) => searchOptionText(option).includes(needle))
+    .sort((left, right) => left.score - right.score || left.index - right.index)
+    .slice(0, 7)
+    .map(({ option }) => option);
+}
+
+function brandOptions(query) {
+  if (!state.pendingCategory) return [];
+  const brands = new Map();
+  state.pendingCategory.variants.forEach((variant) => {
+    const brand = variant.brand || "Без бренда";
+    if (!brands.has(brand)) brands.set(brand, { id: brand, label: brand, aliases: [brand], variants: [] });
+    brands.get(brand).variants.push(variant);
+  });
+  return filterOptions([...brands.values()], query);
+}
+
+function packOptions(query) {
+  if (!state.pendingCategory || !state.pendingBrand) return [];
+  const variants = state.pendingCategory.variants
+    .filter((variant) => (variant.brand || "Без бренда") === state.pendingBrand)
+    .map((variant) => ({ id: variant.id, label: variant.pack, pack: variant.pack, aliases: [variant.name, ...(variant.aliases || [])], variant }));
+  return filterOptions(variants, query);
+}
+
+function selectorInput(field) {
+  return $({
+    product: "#quick-add-input",
+    brand: "#brand-search-input",
+    pack: "#pack-search-input",
+  }[field]);
+}
+
+function selectorList(field) {
+  return $({
+    product: "#product-suggestions",
+    brand: "#brand-suggestions",
+    pack: "#pack-suggestions",
+  }[field]);
+}
+
+function selectorOptions(field, query) {
+  if (field === "product") return filterOptions(categoryOptions(), query);
+  if (field === "brand") return brandOptions(query);
+  return packOptions(query);
+}
+
+function renderSelectorState() {
+  const brandStep = $("#brand-step");
+  const packStep = $("#pack-step");
+  const brandInput = selectorInput("brand");
+  const packInput = selectorInput("pack");
+  const addButton = $("#add-item-button");
+  brandStep.classList.toggle("hidden", !state.pendingCategory);
+  packStep.classList.toggle("hidden", !state.pendingBrand);
+  brandInput.disabled = !state.pendingCategory;
+  packInput.disabled = !state.pendingBrand;
+  addButton.disabled = !state.pendingProduct;
+
+  const selected = $("#selected-product");
+  if (state.pendingProduct) {
+    const details = [state.pendingProduct.brand, state.pendingProduct.pack].filter(Boolean).join(" · ");
+    selected.innerHTML = "<strong>Выбрано:</strong> " + escapeHtml(state.pendingProduct.name) + "<span>" + escapeHtml(details) + "</span>";
+  } else if (state.pendingBrand) {
+    selected.innerHTML = "<span>Теперь выберите упаковку из доступных фасовок.</span>";
+  } else if (state.pendingCategory) {
+    selected.innerHTML = "<span>Товар выбран. Теперь выберите бренд из каталога.</span>";
+  } else {
+    selected.innerHTML = "<span>Сначала выберите товар, затем бренд и упаковку из каталога.</span>";
+  }
+}
+
+function renderSelectorSuggestions(field) {
+  const list = selectorList(field);
+  const input = selectorInput(field);
+  if (!list || !input) return;
+  const query = input.value.trim();
+  const suggestions = state.suggestions[field] || [];
+  if (!query || !suggestions.length) {
+    list.classList.add("hidden");
+    input.setAttribute("aria-expanded", "false");
+    list.innerHTML = "";
+    return;
+  }
+  list.classList.remove("hidden");
+  input.setAttribute("aria-expanded", "true");
+  list.innerHTML = suggestions.map((option, index) => {
+    const label = option.label;
+    const meta = field === "product"
+      ? (option.variants.length + " " + pluralize(option.variants.length, "вариант", "варианта", "вариантов"))
+      : field === "brand"
+        ? (option.variants.length + " " + pluralize(option.variants.length, "фасовка", "фасовки", "фасовок"))
+        : option.variant.name;
+    return "<button type=\"button\" class=\"selector-suggestion " + (index === state.suggestionIndex[field] ? "is-active" : "") + "\" role=\"option\" aria-selected=\"" + (index === state.suggestionIndex[field]) + "\" data-option-field=\"" + field + "\" data-option-id=\"" + escapeHtml(option.id) + "\"><span class=\"selector-suggestion-name\">" + escapeHtml(label) + "</span><span class=\"selector-suggestion-meta\">" + escapeHtml(meta) + "</span></button>";
+  }).join("");
+}
+
+function clearSuggestions() {
+  ["product", "brand", "pack"].forEach((field) => {
+    state.suggestions[field] = [];
+    state.suggestionIndex[field] = -1;
+    renderSelectorSuggestions(field);
+  });
+}
+
+function handleSelectorInput(field, event) {
+  if (field === "product") {
+    state.pendingCategory = null;
+    state.pendingBrand = null;
+    state.pendingProduct = null;
+    selectorInput("brand").value = "";
+    selectorInput("pack").value = "";
+  } else if (field === "brand") {
+    state.pendingBrand = null;
+    state.pendingProduct = null;
+    selectorInput("pack").value = "";
+  } else {
+    state.pendingProduct = null;
+  }
+  state.suggestionIndex[field] = -1;
+  state.suggestions[field] = selectorOptions(field, event.target.value);
+  renderSelectorState();
+  renderSelectorSuggestions(field);
+}
+
+function selectSelectorOption(field, id) {
+  const option = (state.suggestions[field] || []).find((entry) => entry.id === id);
+  if (!option) return;
+  if (field === "product") {
+    state.pendingCategory = option;
+    state.pendingBrand = null;
+    state.pendingProduct = null;
+    selectorInput("product").value = option.label;
+    selectorInput("brand").value = "";
+    selectorInput("pack").value = "";
+    renderSelectorState();
+    clearSuggestions();
+    selectorInput("brand").focus();
+    return;
+  }
+  if (field === "brand") {
+    state.pendingBrand = option.label;
+    state.pendingProduct = null;
+    selectorInput("brand").value = option.label;
+    selectorInput("pack").value = "";
+    renderSelectorState();
+    clearSuggestions();
+    selectorInput("pack").focus();
+    return;
+  }
+  state.pendingProduct = option.variant;
+  selectorInput("pack").value = option.variant.pack;
+  renderSelectorState();
+  clearSuggestions();
+}
+
+function handleSelectorKeydown(field, event) {
+  const suggestions = state.suggestions[field] || [];
+  if (event.key === "ArrowDown" && suggestions.length) {
+    event.preventDefault();
+    state.suggestionIndex[field] = Math.min(state.suggestionIndex[field] + 1, suggestions.length - 1);
+    renderSelectorSuggestions(field);
+    return;
+  }
+  if (event.key === "ArrowUp" && suggestions.length) {
+    event.preventDefault();
+    state.suggestionIndex[field] = Math.max(state.suggestionIndex[field] - 1, 0);
+    renderSelectorSuggestions(field);
+    return;
+  }
+  if (event.key === "Escape") {
+    state.suggestions[field] = [];
+    state.suggestionIndex[field] = -1;
+    renderSelectorSuggestions(field);
+    return;
+  }
+  if (event.key === "Enter") {
+    event.preventDefault();
+    const option = suggestions[state.suggestionIndex[field]];
+    if (option) {
+      selectSelectorOption(field, option.id);
+    } else if (field === "pack" && state.pendingProduct) {
+      addSelectedProduct();
+    } else {
+      $("#data-status").textContent = "Выберите вариант из списка";
+    }
+  }
+}
+
+function focusProductSearch(query) {
+  const input = selectorInput("product");
+  input.value = query;
+  handleSelectorInput("product", { target: input });
+  input.focus();
 }
 
 function formatMoney(value) {
@@ -124,8 +356,11 @@ function matchesPackConstraint(expected, actual) {
 }
 
 function findOffer(retailer, item) {
-  const query = normalize(item.query);
-  const candidates = retailer.items.filter((offer) => offer.aliases.some((alias) => query.includes(normalize(alias)) || normalize(alias).includes(query)));
+  const searchTerms = [item.query, ...(item.searchTerms || [])].map(normalize).filter(Boolean);
+  const candidates = retailer.items.filter((offer) => offer.aliases.some((alias) => {
+    const normalizedAlias = normalize(alias);
+    return searchTerms.some((term) => term.includes(normalizedAlias) || normalizedAlias.includes(term));
+  }));
   return candidates.find((offer) => matchesTextConstraint(item.brand, offer.brand) && matchesPackConstraint(item.pack, offer.pack)) || null;
 }
 
@@ -210,31 +445,47 @@ function copyRetailerList(retailerId) {
   $("#data-status").textContent = `Список для ${retailer.name} скопирован`;
 }
 
-function addItems(raw, details = {}) {
-  const additions = raw.split(/\n/).map((line) => line.trim()).filter(Boolean);
-  if (!additions.length) return;
-  const existing = new Map(state.basketItems.map((item) => [normalize(item.query), item]));
-  const singleItem = additions.length === 1;
-  additions.forEach((query) => {
-    const key = normalize(query);
-    if (!key || state.basketItems.length >= 20) return;
-    const previous = existing.get(key);
-    if (previous) {
-      if (singleItem) {
-        previous.brand = details.brand || previous.brand || "";
-        previous.pack = details.pack || previous.pack || "";
-      }
-      return;
-    }
-    const item = { id: `${Date.now()}-${Math.random()}`, query, brand: singleItem ? details.brand || "" : "", pack: singleItem ? details.pack || extractPack(query) : extractPack(query), quantity: 1 };
-    state.basketItems.push(item);
-    existing.set(key, item);
-  });
+function addSelectedProduct() {
+  const product = state.pendingProduct;
+  if (!product) {
+    $("#data-status").textContent = "Сначала выберите упаковку из списка";
+    selectorInput("pack").focus();
+    return;
+  }
+  const existing = state.basketItems.find((item) => item.productId === product.id);
+  if (existing) {
+    existing.quantity = Math.min(20, existing.quantity + 1);
+  } else {
+    state.basketItems.push({
+      id: String(Date.now()) + "-" + Math.random(),
+      productId: product.id,
+      gtin: product.gtin || "",
+      query: product.name,
+      brand: product.brand || "",
+      pack: product.pack || "",
+      searchTerms: [...(product.aliases || []), ...(product.search_terms || []), product.category_label || ""],
+      source: product.source || "",
+      sourceUrl: product.source_url || "",
+      quantity: 1,
+    });
+  }
   setTextareaFromItems();
+  state.pendingCategory = null;
+  state.pendingBrand = null;
+  state.pendingProduct = null;
+  state.suggestions = { product: [], brand: [], pack: [] };
+  state.suggestionIndex = { product: -1, brand: -1, pack: -1 };
+  selectorInput("product").value = "";
+  selectorInput("brand").value = "";
+  selectorInput("pack").value = "";
+  renderSelectorState();
+  clearSuggestions();
   renderBasket();
-  $("#quick-add-input").value = "";
-  $("#brand-input").value = "";
-  $("#pack-input").value = "";
+  $("#data-status").textContent = "Добавлен товар: " + product.name;
+}
+
+function addItems() {
+  addSelectedProduct();
 }
 
 function changeQuantity(id, delta) {
@@ -252,25 +503,58 @@ function removeItem(id) {
 
 async function init() {
   try {
-    const response = await fetch("./data/demo-quotes.json");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    state.snapshot = await response.json();
+    const [snapshotResponse, catalogResponse] = await Promise.all([
+      fetch("./data/demo-quotes.json"),
+      fetch("./data/product-catalog.json"),
+    ]);
+    if (!snapshotResponse.ok) throw new Error("HTTP " + snapshotResponse.status + " для снимка");
+    if (!catalogResponse.ok) throw new Error("HTTP " + catalogResponse.status + " для каталога");
+    state.snapshot = await snapshotResponse.json();
+    state.catalog = await catalogResponse.json();
+    if (!Array.isArray(state.catalog.items)) throw new Error("каталог имеет неверный формат");
     state.selectedAddress = state.snapshot.addresses[0].id;
-    $("#address-select").innerHTML = state.snapshot.addresses.map((address) => `<option value="${address.id}">${address.label}</option>`).join("");
+    state.pendingCategory = null;
+    state.pendingBrand = null;
+    state.pendingProduct = null;
+    state.suggestions = { product: [], brand: [], pack: [] };
+    state.suggestionIndex = { product: -1, brand: -1, pack: -1 };
+    $("#address-select").innerHTML = state.snapshot.addresses.map((address) => "<option value=\"" + address.id + "\">" + address.label + "</option>").join("");
     $("#summary-location").textContent = state.snapshot.addresses[0].label;
     $("#snapshot-time").textContent = formatSnapshotTime(state.snapshot.generated_at);
-    $("#data-status").textContent = "Демо-снимок готов · live-источники не подключены";
+    $("#data-status").textContent = "Каталог готов · " + state.catalog.items.length + " реальных карточек · цены демо-снимка";
     $("#basket-input").value = EXAMPLE_BASKET.slice(0, 3).join("\n");
     syncBasketFromTextarea();
+    renderSelectorState();
 
     $("#basket-input").addEventListener("input", syncBasketFromTextarea);
     $("#address-select").addEventListener("change", (event) => {
       state.selectedAddress = event.target.value;
       $("#summary-location").textContent = state.snapshot.addresses.find((address) => address.id === state.selectedAddress).label;
     });
-    $("#quick-add-input").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); addItems(event.target.value, { brand: $("#brand-input").value.trim(), pack: $("#pack-input").value.trim() }); } });
-    $("#add-item-button").addEventListener("click", () => addItems($("#quick-add-input").value, { brand: $("#brand-input").value.trim(), pack: $("#pack-input").value.trim() }));
-    $(".quick-picks").addEventListener("click", (event) => { if (event.target.matches("[data-item]")) addItems(event.target.dataset.item); });
+    ["product", "brand", "pack"].forEach((field) => {
+      const input = selectorInput(field);
+      input.addEventListener("input", (event) => handleSelectorInput(field, event));
+      input.addEventListener("keydown", (event) => handleSelectorKeydown(field, event));
+      input.addEventListener("focus", () => {
+        if (field !== "product" && !input.value && selectorOptions(field, "")) return;
+        if (input.value) {
+          state.suggestions[field] = selectorOptions(field, input.value);
+          renderSelectorSuggestions(field);
+        }
+      });
+    });
+    $("#add-item-button").addEventListener("click", addSelectedProduct);
+    $(".product-selector").addEventListener("click", (event) => {
+      const option = event.target.closest("[data-option-field][data-option-id]");
+      if (!option) return;
+      selectSelectorOption(option.dataset.optionField, option.dataset.optionId);
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".product-selector")) clearSuggestions();
+    });
+    $(".quick-picks").addEventListener("click", (event) => {
+      if (event.target.matches("[data-item]")) focusProductSearch(event.target.dataset.item);
+    });
     $("#basket-items").addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
@@ -287,9 +571,8 @@ async function init() {
       if (best) copyRetailerList(best.id);
     });
   } catch (error) {
-    $("#data-status").textContent = `Не удалось загрузить снимок: ${error.message}`;
+    $("#data-status").textContent = "Не удалось загрузить каталог: " + error.message;
   }
 }
-
 init();
 
