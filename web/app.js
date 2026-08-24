@@ -50,7 +50,7 @@ function searchOptionText(option) {
 
 function filterOptions(options, query) {
   const needle = normalize(query);
-  if (!needle) return [];
+  if (!needle) return options.slice(0, 7);
   return options
     .map((option, index) => {
       const text = searchOptionText(option);
@@ -135,7 +135,7 @@ function renderSelectorSuggestions(field) {
   if (!list || !input) return;
   const query = input.value.trim();
   const suggestions = state.suggestions[field] || [];
-  if (!query || !suggestions.length) {
+  if (!suggestions.length) {
     list.classList.add("hidden");
     input.setAttribute("aria-expanded", "false");
     list.innerHTML = "";
@@ -194,6 +194,8 @@ function selectSelectorOption(field, id) {
     selectorInput("pack").value = "";
     renderSelectorState();
     clearSuggestions();
+    state.suggestions.brand = selectorOptions("brand", "");
+    renderSelectorSuggestions("brand");
     selectorInput("brand").focus();
     return;
   }
@@ -204,6 +206,8 @@ function selectSelectorOption(field, id) {
     selectorInput("pack").value = "";
     renderSelectorState();
     clearSuggestions();
+    state.suggestions.pack = selectorOptions("pack", "");
+    renderSelectorSuggestions("pack");
     selectorInput("pack").focus();
     return;
   }
@@ -536,17 +540,16 @@ async function init() {
       input.addEventListener("input", (event) => handleSelectorInput(field, event));
       input.addEventListener("keydown", (event) => handleSelectorKeydown(field, event));
       input.addEventListener("focus", () => {
-        if (field !== "product" && !input.value && selectorOptions(field, "")) return;
-        if (input.value) {
-          state.suggestions[field] = selectorOptions(field, input.value);
-          renderSelectorSuggestions(field);
-        }
+        state.suggestionIndex[field] = -1;
+        state.suggestions[field] = selectorOptions(field, input.value);
+        renderSelectorSuggestions(field);
       });
     });
     $("#add-item-button").addEventListener("click", addSelectedProduct);
     $(".product-selector").addEventListener("click", (event) => {
       const option = event.target.closest("[data-option-field][data-option-id]");
       if (!option) return;
+      event.stopPropagation();
       selectSelectorOption(option.dataset.optionField, option.dataset.optionId);
     });
     document.addEventListener("click", (event) => {
@@ -575,4 +578,3 @@ async function init() {
   }
 }
 init();
-
