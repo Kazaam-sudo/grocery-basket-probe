@@ -351,6 +351,72 @@ function packSignature(value) {
   return `${Math.round(amount * multiplier * 1000) / 1000}:${canonicalUnit}`;
 }
 
+function parsePack(value) {
+  const raw = String(value || "").toLowerCase().replaceAll("ё", "е").replace(",", ".").trim();
+  const match = raw.match(/(\d+(?:\.\d+)?)\s*(кг|г|л|мл|шт|рулон(?:а|ов)?)/);
+  if (!match) return null;
+  const conversions = { кг: ["g", 1000], г: ["g", 1], л: ["ml", 1000], мл: ["ml", 1], шт: ["count", 1], рулон: ["count", 1], рулона: ["count", 1], рулонов: ["count", 1] };
+  const [unit, multiplier] = conversions[match[2]];
+  return { amount: Number(match[1]) * multiplier, unit };
+}
+
+function catalogMetadataForItem(item) {
+  if (item.categoryId || item.categoryLabel) return item;
+  const query = normalize(item.query);
+  return catalogItems().find((product) => [product.name, ...(product.aliases || []), product.category_label].some((value) => {
+    const text = normalize(value);
+    return text && (query.includes(text) || text.includes(query));
+  })) || null;
+}
+
+function offerSearchScore(item, offer) {
+  if (!offer) return -Infinity;
+  const metadata = catalogMetadataForItem(item);
+  const terms = [item.query, ...(item.searchTerms || []), metadata?.category_label, ...(metadata?.category_aliases || [])].map(normalize).filter(Boolean);
+  const aliasScore = (offer.aliases || []).reduce((best, alias) => {
+    const normalizedAlias = normalize(alias);
+    if (!normalizedAlias) return best;
+    return Math.max(best, terms.some((term) => term === normalizedAlias) ? 40 : terms.some((term) => term.includes(normalizedAlias) || normalizedAlias.includes(term)) ? 18 : 0);
+  }, 0);
+  if (!aliasScore) return -Infinity;
+  if (item.brand && !matchesTextConstraint(item.brand, offer.brand)) return -Infinity;
+  const expectedPack = parsePack(item.pack || extractPack(item.query));
+  const offerPack = parsePack(offer.pack);
+  let packScore = 0;
+  if (expectedPack && offerPack) {
+    if (expectedPack.unit !== offerPack.unit) return -Infinity;
+    const distance = Math.abs(expectedPack.amount - offerPack.amount) / Math.max(expectedPack.amount, offerPack.amount);
+    if (distance > 0.6) return -Infinity;
+    packScore = 20 - distance * 20;
+  }
+  const brandScore = item.brand && matchesTextConstraint(item.brand, offer.brand) ? 35 : 0;
+  return aliasScore + packScore + brandScore;
+}
+
+function findAnalogOffer(retailer, item) {
+  const offers = retailer.offerCatalog || retailer.items || [];
+  return offers
+    .map((entry) => ({ offer: entry.offer || entry, score: offerSearchScore(item, entry.offer || entry) }))
+    .filter(({ offer, score }) => isUsableOffer(offer) && Number.isFinite(score))
+    .sort((left, right) => right.score - left.score)[0]?.offer || null;
+}
+
+function equivalentPrice(offer, item) {
+  const expectedPack = parsePack(item.pack || extractPack(item.query));
+  const actualPack = parsePack(offer.pack);
+  if (!expectedPack || !actualPack || expectedPack.unit !== actualPack.unit || !actualPack.amount) return offer.price;
+  return offer.price * expectedPack.amount / actualPack.amount;
+}
+
+function formatUnitPrice(value) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 2 }).format(value);
+}
+
+function analogPackLabel(item) {
+  return item.pack || extractPack(item.query) || "запрошенную фасовку";
+}
+
 function matchesPackConstraint(expected, actual) {
   const expectedValue = String(expected || "").trim();
   if (!expectedValue) return true;
@@ -374,10 +440,12 @@ function isUsableOffer(offer) {
 
 function buildQuote(items) {
   return state.snapshot.retailers.map((retailer) => {
+    const offerCatalog = retailer.items;
     const matchedItems = items.map((item) => ({ ...item, offer: findOffer(retailer, item) }));
     const found = matchedItems.filter(({ offer }) => isUsableOffer(offer));
     return {
       ...retailer,
+      offerCatalog,
       items: matchedItems,
       foundCount: found.length,
       unitCount: found.reduce((sum, item) => sum + item.quantity, 0),
@@ -402,20 +470,43 @@ function buildComparableQuote(quote, items) {
       comparableTotal: comparableItems.reduce((sum, item) => sum + item.offer.price * item.quantity, 0),
     };
   });
-  return { items: commonItems, retailers };
+  const analogs = items
+    .filter((item) => !commonIds.has(item.id))
+    .map((item) => {
+      const matches = quote.map((retailer) => ({
+        retailerId: retailer.id,
+        retailerName: retailer.name,
+        offer: findAnalogOffer(retailer, item),
+      }));
+      const availableCount = matches.filter(({ offer }) => isUsableOffer(offer)).length;
+      return {
+        item,
+        matches,
+        availableCount,
+        comparable: availableCount === quote.length,
+      };
+    })
+    .filter(({ availableCount }) => availableCount > 0);
+  return { items: commonItems, retailers, analogs };
 }
 
 function renderComparisonScope() {
   const scope = $("#comparison-scope");
   const commonItems = state.comparison?.items || [];
+  const analogs = state.comparison?.analogs || [];
   const excludedItems = state.basketItems.filter((item) => !commonItems.some((commonItem) => commonItem.id === item.id));
   if (!commonItems.length) {
-    scope.innerHTML = `<strong>Нет общей корзины для сравнения</strong><span>Ни одна позиция не найдена одновременно во всех выбранных сетях. Добавьте более универсальные товары или сократите список.</span>`;
+    scope.innerHTML = `<strong>Нет общей корзины для сравнения</strong><span>Ни одна позиция не найдена одновременно во всех выбранных сетях. Ниже можно посмотреть найденные аналоги.</span>${renderAnalogGroups(analogs)}`;
     scope.className = "comparison-scope is-empty";
     return;
   }
   scope.className = "comparison-scope";
-  scope.innerHTML = `<strong>Сравниваем одинаковую корзину: ${commonItems.length} из ${state.basketItems.length} позиций</strong><span>Итоги ниже рассчитаны только по товарам, которые есть во всех сетях.</span><div class="comparison-scope-items">${commonItems.map((item) => `<span>${escapeHtml(item.query)}</span>`).join("")}</div>${excludedItems.length ? `<div class="comparison-excluded"><strong>Не вошли в сравнение:</strong> ${excludedItems.map((item) => escapeHtml(item.query)).join(" · ")}</div>` : ""}`;
+  scope.innerHTML = `<strong>Сравниваем одинаковую корзину: ${commonItems.length} из ${state.basketItems.length} позиций</strong><span>Итоги ниже рассчитаны только по товарам, которые есть во всех сетях.</span><div class="comparison-scope-items">${commonItems.map((item) => `<span>${escapeHtml(item.query)}</span>`).join("")}</div>${excludedItems.length ? `<div class="comparison-excluded"><strong>Не вошли в сравнение:</strong> ${excludedItems.map((item) => escapeHtml(item.query)).join(" · ")}</div>` : ""}${renderAnalogGroups(analogs)}`;
+}
+
+function renderAnalogGroups(analogs) {
+  if (!analogs.length) return "";
+  return `<div class="comparison-analogs"><strong>Аналоги для исключённых позиций</strong><span>Сравнение приведено к запрошенной фасовке; фактическая упаковка показана рядом.</span>${analogs.map(({ item, matches, availableCount, comparable }) => `<div class="analog-group"><div class="analog-heading"><strong>${escapeHtml(item.query)}</strong><span class="analog-status ${comparable ? "is-comparable" : ""}">${comparable ? `сравнимый аналог для ${escapeHtml(analogPackLabel(item))}` : `аналог найден в ${availableCount} из ${state.snapshot.retailers.length} сетей`}</span></div><div class="analog-offers">${matches.map(({ retailerName, offer }) => offer && isUsableOffer(offer) ? `<div class="analog-offer"><span>${escapeHtml(retailerName)}</span><span>${escapeHtml(offer.pack)} · ${formatUnitPrice(equivalentPrice(offer, item))} за ${escapeHtml(analogPackLabel(item))}</span></div>` : `<div class="analog-offer is-missing"><span>${escapeHtml(retailerName)}</span><span>аналог не найден</span></div>`).join("")}</div></div>`).join("")}</div>`;
 }
 
 function renderRetailers() {
@@ -449,11 +540,11 @@ function renderRetailers() {
         <div><strong>Найдено</strong>${foundList}</div>
         <div><strong>Не найдено</strong>${missingList}</div>
       </div>
-      <div class="card-actions"><a class="primary-button" href="${retailer.public_url}" target="_blank" rel="noreferrer">Открыть сайт ↗</a><button class="secondary-button" type="button" data-retailer="${retailer.id}">Список</button></div>
+      <div class="card-actions"><a class="primary-button" href="${retailer.public_url}" target="_blank" rel="noreferrer">Открыть сайт ↗</a><button class="secondary-button" type="button" data-retailer="${retailer.id}">Скопировать список</button></div>
     </article>`;
   }).join("");
 
-  $("#retailer-grid").querySelectorAll("button[data-retailer]").forEach((button) => button.addEventListener("click", () => copyRetailerList(button.dataset.retailer)));
+  $("#retailer-grid").querySelectorAll("button[data-retailer]").forEach((button) => button.addEventListener("click", () => copyRetailerList(button.dataset.retailer, button)));
   $("#retailer-grid").querySelectorAll("button[data-coverage-toggle]").forEach((button) => button.addEventListener("click", () => {
     const details = $("#" + button.dataset.coverageToggle);
     const expanded = button.getAttribute("aria-expanded") === "true";
@@ -480,6 +571,43 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]);
 }
 
+let toastTimer;
+
+function showToast(message) {
+  const toast = $("#toast");
+  if (!toast) return;
+  window.clearTimeout(toastTimer);
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+  toastTimer = window.setTimeout(() => toast.classList.add("hidden"), 2800);
+}
+
+async function copyText(value) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch (error) {
+    // Fall back to the legacy copy path below when the browser blocks clipboard access.
+  }
+  const helper = document.createElement("textarea");
+  helper.value = value;
+  helper.setAttribute("readonly", "");
+  helper.style.position = "fixed";
+  helper.style.opacity = "0";
+  document.body.appendChild(helper);
+  helper.select();
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch (error) {
+    copied = false;
+  }
+  helper.remove();
+  return copied;
+}
+
 function renderResults() {
   if (!state.basketItems.length) {
     $("#data-status").textContent = "Добавьте хотя бы один товар";
@@ -502,11 +630,22 @@ function listText(retailer) {
   return retailer.comparableItems.filter(({ offer }) => isUsableOffer(offer)).map(({ query, offer, quantity }) => `${quantity > 1 ? `${quantity} × ` : ""}${query} — ${formatItemSpec({ brand: offer.brand, pack: offer.pack })}, ${offer.name}`).join("\n");
 }
 
-function copyRetailerList(retailerId) {
+async function copyRetailerList(retailerId, button) {
   const retailer = state.comparison?.retailers?.find((item) => item.id === retailerId);
   if (!retailer) return;
-  navigator.clipboard?.writeText(listText(retailer));
-  $("#data-status").textContent = `Список для ${retailer.name} скопирован`;
+  const text = listText(retailer);
+  if (!text) {
+    showToast("В общей корзине нет позиций для списка");
+    return;
+  }
+  const copied = await copyText(text);
+  $("#data-status").textContent = copied ? `Список для ${retailer.name} скопирован` : "Не удалось скопировать список";
+  showToast(copied ? `Список ${retailer.name} скопирован` : "Не удалось скопировать список");
+  if (button) {
+    const originalLabel = button.textContent;
+    button.textContent = copied ? "Скопировано ✓" : "Повторить копирование";
+    window.setTimeout(() => { button.textContent = originalLabel; }, 2200);
+  }
 }
 
 function addSelectedProduct() {
@@ -528,6 +667,8 @@ function addSelectedProduct() {
       brand: product.brand || "",
       pack: product.pack || "",
       searchTerms: [...(product.aliases || []), ...(product.search_terms || []), product.category_label || ""],
+      categoryId: product.category_id || "",
+      categoryLabel: product.category_label || "",
       source: product.source || "",
       sourceUrl: product.source_url || "",
       quantity: 1,
@@ -636,7 +777,7 @@ async function init() {
         return;
       }
       const best = [...(state.comparison?.retailers || [])].sort((a, b) => a.comparableTotal - b.comparableTotal)[0];
-      if (best) copyRetailerList(best.id);
+      if (best) copyRetailerList(best.id, $("#copy-list-button"));
     });
   } catch (error) {
     $("#data-status").textContent = "Не удалось загрузить каталог: " + error.message;
