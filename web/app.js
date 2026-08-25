@@ -13,7 +13,7 @@ const state = { snapshot: null, catalog: null, selectedAddress: null, basketItem
 const $ = (selector) => document.querySelector(selector);
 
 function normalize(value) {
-  return value.toLowerCase().replaceAll("ё", "е").replace(/[^а-яa-z0-9]+/g, " ").trim();
+  return String(value || "").toLowerCase().replaceAll("ё", "е").replace(/[^а-яa-z0-9]+/g, " ").trim();
 }
 
 function extractPack(value) {
