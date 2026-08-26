@@ -250,13 +250,6 @@ function handleSelectorKeydown(field, event) {
   }
 }
 
-function focusProductSearch(query) {
-  const input = selectorInput("product");
-  input.value = query;
-  handleSelectorInput("product", { target: input });
-  input.focus();
-}
-
 function formatMoney(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(value);
@@ -756,9 +749,6 @@ async function init() {
     });
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".product-selector")) clearSuggestions();
-    });
-    $(".quick-picks").addEventListener("click", (event) => {
-      if (event.target.matches("[data-item]")) focusProductSearch(event.target.dataset.item);
     });
     $("#basket-items").addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
