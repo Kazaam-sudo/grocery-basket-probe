@@ -35,6 +35,7 @@
 - [Отчёт технической разведки Магнита](docs/source-investigation/magnit.md)
 - [Бесплатный web app и GitHub Pages](docs/free-hosting.md)
 - [Live data gate и статус источников](docs/live-data-gate.md)
+- [План загрузки полных каталогов](docs/catalog-loading-plan.md)
 - [Готовый промт для следующего coding agent](docs/prompts/01-source-investigation.md)
 - [Prompt 02: recommendation MVP](docs/prompts/02-recommendation-mvp.md)
 
